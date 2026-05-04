@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Escala de Testemunho Público</title>
+  <style>
+    :root {
+      --azul: #173f72;
+      --azul-medio: #285b94;
+      --azul-claro: #e6f0fb;
+      --verde: #426b28;
+      --verde-medio: #638a3e;
+      --verde-claro: #edf6e8;
+      --texto: #1e2936;
+      --muted: #66758a;
+      --borda: #d4dee9;
+      --papel: #ffffff;
+      --img-topo: none;
+      --img-baixo: none;
+      --fs-titulo: 42px;
+      --fs-versiculo: 18px;
+      --fs-data: 24px;
+      --fs-dia: 20px;
+      --fs-texto: 17px;
+      --card-padding: 16px;
+      --gap: 14px;
+      --semana-gap: 18px;
+      --header-height: 154px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #d8dde4;
+      color: var(--texto);
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .barra-controles {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+      background: #172233;
+      box-shadow: 0 4px 16px rgba(0,0,0,.22);
+    }
+
+    .linha-controles {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 15px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      color: #172233;
+      background: #ffffff;
+    }
+
+    button:hover { background: #e8eef6; }
+
+    .controle-url {
+      display: grid;
+      grid-template-columns: 140px minmax(220px, 520px) auto;
+      gap: 8px;
+      align-items: center;
+      color: #ffffff;
+      font-size: 13px;
+    }
+
+    .controle-url input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 9px;
+      padding: 9px 10px;
+      color: #ffffff;
+      background: rgba(255,255,255,.08);
+      outline: none;
+    }
+
+    .controle-url input::placeholder { color: rgba(255,255,255,.62); }
+
+    .aviso {
+      width: min(100%, 210mm);
+      margin: 12px auto 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: #24344a;
+      background: #fff8d8;
+      border: 1px solid #e7d88c;
+      border-radius: 10px;
+    }
+
+    .folha {
+      position: relative;
+      width: 210mm;
+      height: 297mm;
+      margin: 16px auto;
+      overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,1) 0 48%, rgba(255,255,255,.9) 68%, rgba(255,255,255,.98) 100%),
+        radial-gradient(circle at 87% 10%, rgba(248,221,113,.24), transparent 24%),
+        var(--papel);
+      box-shadow: 0 10px 30px rgba(0,0,0,.28);
+    }
+
+    .folha::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 90% 85%, rgba(119,158,78,.16), transparent 30%),
+        radial-gradient(circle at 78% 14%, rgba(72,128,180,.08), transparent 24%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .decor-topo,
+    .decor-baixo {
+      position: absolute;
+      right: 0;
+      z-index: 1;
+      pointer-events: none;
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: cover;
+    }
+
+    .decor-topo {
+      top: 0;
+      width: 47%;
+      height: 160px;
+      opacity: .9;
+      background-image:
+        linear-gradient(90deg, rgba(255,255,255,1), rgba(255,255,255,.45) 24%, rgba(255,255,255,0) 55%),
+        var(--img-topo),
+        linear-gradient(135deg, rgba(218,235,249,.85), rgba(238,246,233,.65));
+    }
+
+    .decor-baixo {
+      bottom: 42px;
+      width: 50%;
+      height: 155px;
+      opacity: .82;
+      background-image:
+        linear-gradient(90deg, rgba(255,255,255,1), rgba(255,255,255,.45) 26%, rgba(255,255,255,0) 62%),
+        var(--img-baixo),
+        linear-gradient(150deg, rgba(220,238,250,.7), rgba(228,242,203,.9));
+    }
+
+    .fallback-topo,
+    .fallback-baixo {
+      position: absolute;
+      inset: 0;
+    }
+
+    .folha.com-img-topo .fallback-topo,
+    .folha.com-img-baixo .fallback-baixo { display: none; }
+
+    .sol {
+      position: absolute;
+      right: 56px;
+      top: -20px;
+      width: 115px;
+      height: 115px;
+      border-radius: 50%;
+      background: rgba(245,214,87,.36);
+    }
+
+    .cidade {
+      position: absolute;
+      right: 18px;
+      bottom: 16px;
+      width: 290px;
+      height: 75px;
+      opacity: .26;
+      background:
+        linear-gradient(to top, #7899b3 0 38px, transparent 38px),
+        linear-gradient(to top, #7899b3 0 64px, transparent 64px),
+        linear-gradient(to top, #7899b3 0 49px, transparent 49px),
+        linear-gradient(to top, #7899b3 0 70px, transparent 70px);
+      background-size: 48px 100%, 58px 100%, 42px 100%, 70px 100%;
+      background-position: 0 0, 60px 0, 138px 0, 200px 0;
+      background-repeat: no-repeat;
+    }
+
+    .pessoa {
+      position: absolute;
+      bottom: 3px;
+      width: 58px;
+      height: 122px;
+    }
+
+    .pessoa .cabeca {
+      position: absolute;
+      left: 17px;
+      top: 0;
+      width: 29px;
+      height: 29px;
+      border-radius: 50%;
+      background: #c18c5b;
+    }
+
+    .pessoa .corpo {
+      position: absolute;
+      left: 12px;
+      top: 29px;
+      width: 39px;
+      height: 68px;
+      border-radius: 18px 18px 8px 8px;
+      background: #e6eef4;
+      border: 2px solid rgba(60,80,100,.15);
+    }
+
+    .pessoa .perna1,
+    .pessoa .perna2 {
+      position: absolute;
+      top: 91px;
+      width: 12px;
+      height: 35px;
+      background: #59646c;
+      border-radius: 7px;
+    }
+
+    .pessoa .perna1 { left: 18px; }
+    .pessoa .perna2 { left: 34px; }
+
+    .pessoa .livro {
+      position: absolute;
+      left: 30px;
+      top: 48px;
+      width: 42px;
+      height: 28px;
+      border-radius: 3px;
+      background: #355f8c;
+      transform: rotate(7deg);
+      border: 2px solid rgba(255,255,255,.7);
+    }
+
+    .pessoa.um { right: 164px; }
+    .pessoa.dois { right: 80px; transform: scaleX(-1); }
+    .pessoa.dois .cabeca { background: #d2a16f; }
+    .pessoa.dois .corpo { background: #6b7654; }
+
+    .predios {
+      position: absolute;
+      right: 88px;
+      bottom: 46px;
+      width: 260px;
+      height: 86px;
+      opacity: .25;
+      background:
+        linear-gradient(to top, #85a5be 0 70px, transparent 70px),
+        linear-gradient(to top, #85a5be 0 50px, transparent 50px),
+        linear-gradient(to top, #85a5be 0 82px, transparent 82px),
+        linear-gradient(to top, #85a5be 0 62px, transparent 62px);
+      background-size: 48px 100%, 42px 100%, 56px 100%, 38px 100%;
+      background-position: 0 0, 66px 0, 130px 0, 210px 0;
+      background-repeat: no-repeat;
+    }
+
+    .arvore {
+      position: absolute;
+      bottom: 18px;
+      width: 96px;
+      height: 110px;
+    }
+
+    .arvore::before {
+      content: "";
+      position: absolute;
+      left: 42px;
+      bottom: 0;
+      width: 12px;
+      height: 54px;
+      background: #9a7446;
+      border-radius: 10px;
+    }
+
+    .arvore::after {
+      content: "";
+      position: absolute;
+      left: 3px;
+      top: 0;
+      width: 90px;
+      height: 80px;
+      border-radius: 50%;
+      background:
+        radial-gradient(circle at 32% 35%, #8faa4f 0 22px, transparent 23px),
+        radial-gradient(circle at 62% 30%, #7b9b3f 0 27px, transparent 28px),
+        radial-gradient(circle at 48% 58%, #6e8f38 0 34px, transparent 35px),
+        #7fa047;
+    }
+
+    .arvore.a1 { right: 16px; transform: scale(1.15); }
+    .arvore.a2 { right: 138px; bottom: 34px; transform: scale(.62); opacity: .85; }
+    .arvore.a3 { right: 280px; bottom: 28px; transform: scale(.68); opacity: .74; }
+
+    .conteudo {
+      position: relative;
+      z-index: 2;
+      height: 100%;
+      padding: 34px 34px 58px;
+    }
+
+    .cabecalho {
+      height: var(--header-height);
+      padding-left: 18px;
+    }
+
+    h1 {
+      margin: 0;
+      width: fit-content;
+      max-width: 520px;
+      color: var(--azul);
+      font-size: var(--fs-titulo);
+      line-height: 1.05;
+      letter-spacing: .2px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .subtitulo {
+      width: 485px;
+      margin-top: 16px;
+      color: var(--azul);
+      font-size: var(--fs-versiculo);
+      line-height: 1.35;
+      text-align: center;
+    }
+
+    .subtitulo [contenteditable] { outline: none; }
+
+    .linha-decorativa {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      width: 450px;
+      margin: 16px 0 0 7px;
+      color: var(--azul);
+    }
+
+    .linha-decorativa::before,
+    .linha-decorativa::after {
+      content: "";
+      flex: 1;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(36,90,148,.55), transparent);
+    }
+
+    .icone-pessoas {
+      position: relative;
+      width: 42px;
+      height: 28px;
+    }
+
+    .icone-pessoas::before,
+    .icone-pessoas::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      width: 12px;
+      height: 12px;
+      border: 3px solid currentColor;
+      border-radius: 50%;
+      background: #fff;
+    }
+
+    .icone-pessoas::before { left: 6px; }
+    .icone-pessoas::after { right: 6px; }
+
+    .icone-pessoas span::before,
+    .icone-pessoas span::after {
+      content: "";
+      position: absolute;
+      bottom: 0;
+      width: 17px;
+      height: 15px;
+      border: 3px solid currentColor;
+      border-bottom: 0;
+      border-radius: 15px 15px 0 0;
+    }
+
+    .icone-pessoas span::before { left: 1px; }
+    .icone-pessoas span::after { right: 1px; }
+
+    .area-semanas {
+      display: grid;
+      gap: var(--semana-gap);
+    }
+
+    .semana {
+      border: 2px solid rgba(23,63,114,.18);
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(255,255,255,.94);
+      box-shadow: 0 5px 18px rgba(23,63,114,.06);
+    }
+
+    .semana.verde {
+      border-color: rgba(66,107,40,.20);
+    }
+
+    .semana-topo {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(90deg, var(--azul-claro), rgba(255,255,255,.92));
+      border-bottom: 1px solid rgba(23,63,114,.14);
+    }
+
+    .semana.verde .semana-topo {
+      background: linear-gradient(90deg, var(--verde-claro), rgba(255,255,255,.92));
+      border-bottom-color: rgba(66,107,40,.14);
+    }
+
+    .semana-numero {
+      display: grid;
+      place-items: center;
+      min-width: 46px;
+      height: 46px;
+      padding: 0 8px;
+      border-radius: 14px;
+      color: #fff;
+      background: var(--azul);
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .semana.verde .semana-numero { background: var(--verde); }
+
+    .semana-data {
+      color: var(--azul);
+      font-size: var(--fs-data);
+      line-height: 1.2;
+      font-weight: 800;
+      outline: none;
+    }
+
+    .semana.verde .semana-data { color: var(--verde); }
+
+    .dias {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--gap);
+      padding: var(--gap);
+    }
+
+    .dia-card {
+      min-width: 0;
+      border: 1px solid var(--borda);
+      border-radius: 16px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .dia-nome {
+      padding: 11px 12px;
+      color: #fff;
+      background: linear-gradient(180deg, var(--azul-medio), var(--azul));
+      font-size: var(--fs-dia);
+      line-height: 1.1;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-align: center;
+      outline: none;
+    }
+
+    .semana.verde .dia-nome {
+      background: linear-gradient(180deg, var(--verde-medio), var(--verde));
+    }
+
+    .dia-corpo {
+      display: grid;
+      gap: 10px;
+      padding: var(--card-padding);
+      font-size: var(--fs-texto);
+      line-height: 1.32;
+    }
+
+    .campo {
+      display: grid;
+      gap: 3px;
+    }
+
+    .campo-label {
+      color: var(--muted);
+      font-size: .78em;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    .campo-texto {
+      min-height: 22px;
+      outline: none;
+      white-space: pre-wrap;
+    }
+
+    .responsaveis .campo-texto {
+      min-height: 43px;
+    }
+
+    .rodape-quote {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      width: 480px;
+      min-height: 88px;
+      margin-top: 18px;
+      padding: 13px 16px;
+      border: 2px solid rgba(36,90,148,.22);
+      border-radius: 16px;
+      background: linear-gradient(90deg, rgba(230,240,251,.96), rgba(255,255,255,.92));
+      color: var(--azul);
+    }
+
+    .livro-icone {
+      display: grid;
+      place-items: center;
+      flex: 0 0 64px;
+      height: 64px;
+      border-radius: 50%;
+      color: #fff;
+      background: rgba(36,90,148,.65);
+      font-size: 34px;
+    }
+
+    .texto-rodape-quote {
+      font-size: 16px;
+      line-height: 1.32;
+      outline: none;
+    }
+
+    .rodape-final {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 3;
+      height: 42px;
+      display: grid;
+      grid-template-columns: 44px 1fr 180px;
+      align-items: center;
+      padding: 0 34px;
+      color: #50623f;
+      background: linear-gradient(90deg, #eef3e6, #e4eed7);
+      font-size: 13px;
+    }
+
+    .globo { font-size: 24px; color: #456432; }
+    .site {
+      justify-self: center;
+      color: #496829;
+      font-size: 21px;
+      font-weight: 800;
+      outline: none;
+    }
+
+    [contenteditable="true"]:focus {
+      box-shadow: 0 0 0 2px rgba(255,193,7,.75);
+      border-radius: 6px;
+      background: rgba(255,248,210,.68);
+    }
+
+    [data-placeholder]:empty::before {
+      content: attr(data-placeholder);
+      color: #94a1b2;
+    }
+
+    .folha.compacto-3 {
+      --fs-titulo: 36px;
+      --fs-versiculo: 15px;
+      --fs-data: 19px;
+      --fs-dia: 16px;
+      --fs-texto: 13px;
+      --card-padding: 10px;
+      --gap: 8px;
+      --semana-gap: 9px;
+      --header-height: 118px;
+    }
+
+    .folha.compacto-3 .conteudo { padding-top: 24px; }
+    .folha.compacto-3 .subtitulo { margin-top: 9px; width: 410px; }
+    .folha.compacto-3 .linha-decorativa { margin-top: 8px; width: 390px; }
+    .folha.compacto-3 .semana-topo { padding: 8px 12px; }
+    .folha.compacto-3 .semana-numero { min-width: 38px; height: 38px; border-radius: 12px; font-size: 13px; }
+    .folha.compacto-3 .dia-nome { padding: 8px 10px; }
+    .folha.compacto-3 .dia-corpo { gap: 6px; }
+    .folha.compacto-3 .responsaveis .campo-texto { min-height: 33px; }
+    .folha.compacto-3 .rodape-quote { width: 405px; min-height: 64px; margin-top: 9px; padding: 9px 12px; }
+    .folha.compacto-3 .livro-icone { flex-basis: 46px; height: 46px; font-size: 27px; }
+    .folha.compacto-3 .texto-rodape-quote { font-size: 12px; }
+
+    .folha.compacto-4 {
+      --fs-titulo: 31px;
+      --fs-versiculo: 13px;
+      --fs-data: 16px;
+      --fs-dia: 13px;
+      --fs-texto: 11px;
+      --card-padding: 7px;
+      --gap: 6px;
+      --semana-gap: 6px;
+      --header-height: 91px;
+    }
+
+    .folha.compacto-4 .conteudo { padding: 17px 24px 44px; }
+    .folha.compacto-4 .cabecalho { padding-left: 12px; }
+    .folha.compacto-4 .subtitulo { margin-top: 6px; width: 350px; line-height: 1.18; }
+    .folha.compacto-4 .linha-decorativa { display: none; }
+    .folha.compacto-4 .decor-topo { height: 126px; }
+    .folha.compacto-4 .decor-baixo { height: 120px; bottom: 34px; }
+    .folha.compacto-4 .semana { border-radius: 13px; }
+    .folha.compacto-4 .semana-topo { padding: 6px 10px; gap: 8px; }
+    .folha.compacto-4 .semana-numero { min-width: 31px; height: 31px; border-radius: 10px; font-size: 10px; }
+    .folha.compacto-4 .dia-card { border-radius: 11px; }
+    .folha.compacto-4 .dia-nome { padding: 6px 8px; }
+    .folha.compacto-4 .dia-corpo { gap: 4px; }
+    .folha.compacto-4 .responsaveis .campo-texto { min-height: 26px; }
+    .folha.compacto-4 .rodape-quote { width: 350px; min-height: 50px; margin-top: 6px; padding: 7px 10px; gap: 9px; }
+    .folha.compacto-4 .livro-icone { flex-basis: 36px; height: 36px; font-size: 22px; }
+    .folha.compacto-4 .texto-rodape-quote { font-size: 10px; line-height: 1.16; }
+    .folha.compacto-4 .rodape-final { height: 34px; padding: 0 26px; font-size: 11px; grid-template-columns: 36px 1fr 150px; }
+    .folha.compacto-4 .site { font-size: 17px; }
+
+    @page { size: A4; margin: 0; }
+
+    @media print {
+      html, body {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+        background: white;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+
+      .barra-controles,
+      .aviso { display: none !important; }
+
+      .folha {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        box-shadow: none;
+        page-break-inside: avoid;
+      }
+
+      [contenteditable="true"]:focus {
+        box-shadow: none;
+        background: transparent;
+      }
+    }
+
+    @media screen and (max-width: 860px) {
+      .folha {
+        transform: scale(.58);
+        transform-origin: top center;
+        margin-bottom: -445px;
+      }
+
+      .controle-url { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="barra-controles">
+    <div class="linha-controles">
+      <button type="button" onclick="adicionarSemana()">+ Incluir semana</button>
+      <button type="button" onclick="removerUltimaSemana()">Remover última semana</button>
+      <button type="button" onclick="salvarVersaoManual()">Salvar versão atual</button>
+      <button type="button" onclick="restaurarVersaoManual()">Restaurar versão salva</button>
+      <button type="button" onclick="window.print()">Imprimir / Salvar em PDF</button>
+      <button type="button" onclick="limparCampos()">Limpar campos</button>
+      <button type="button" onclick="restaurarModelo()">Restaurar exemplo</button>
+    </div>
+
+    <div class="linha-controles">
+      <label class="controle-url">
+        <span>Imagem de cima</span>
+        <input id="urlTopo" type="url" placeholder="Cole aqui o link da imagem do topo" />
+        <button type="button" onclick="aplicarImagem('topo')">Aplicar</button>
+      </label>
+    </div>
+
+    <div class="linha-controles">
+      <label class="controle-url">
+        <span>Imagem de baixo</span>
+        <input id="urlBaixo" type="url" placeholder="Cole aqui o link da imagem do rodapé" />
+        <button type="button" onclick="aplicarImagem('baixo')">Aplicar</button>
+      </label>
+    </div>
+  </div>
+
+  <div class="aviso">
+    Visual reorganizado em cartões: cada dia mostra Local, Horário e Responsáveis juntos. Clique nos textos para editar. Use “+ Incluir semana” para acrescentar semanas. Para PDF: A4, margens “Nenhuma” e “Gráficos de segundo plano” ativado.
+  </div>
+
+  <main class="folha" id="folha">
+    <div class="decor-topo" aria-hidden="true">
+      <div class="fallback-topo">
+        <div class="sol"></div>
+        <div class="cidade"></div>
+        <div class="pessoa um"><div class="cabeca"></div><div class="corpo"></div><div class="livro"></div><div class="perna1"></div><div class="perna2"></div></div>
+        <div class="pessoa dois"><div class="cabeca"></div><div class="corpo"></div><div class="perna1"></div><div class="perna2"></div></div>
+      </div>
+    </div>
+
+    <div class="decor-baixo" aria-hidden="true">
+      <div class="fallback-baixo">
+        <div class="predios"></div>
+        <div class="arvore a1"></div>
+        <div class="arvore a2"></div>
+        <div class="arvore a3"></div>
+      </div>
+    </div>
+
+    <section class="conteudo">
+      <header class="cabecalho">
+        <h1 contenteditable="true">Testemunho Público</h1>
+        <div class="subtitulo">
+          <div contenteditable="true">“Vocês serão minhas testemunhas.”</div>
+          <div contenteditable="true">— Atos 1:8 (TNM)</div>
+        </div>
+        <div class="linha-decorativa" aria-hidden="true"><div class="icone-pessoas"><span></span></div></div>
+      </header>
+
+      <section class="area-semanas" id="areaSemanas">
+        <section class="semana azul">
+          <div class="semana-topo">
+            <div class="semana-numero">SEM. 1</div>
+            <div class="semana-data" contenteditable="true">04/05/2026 a 10/05/2026</div>
+          </div>
+
+          <div class="dias">
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Segunda</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
+              </div>
+            </article>
+
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Terça</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
+              </div>
+            </article>
+
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Quinta</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Antônia Oliveira</div></div>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="semana verde">
+          <div class="semana-topo">
+            <div class="semana-numero">SEM. 2</div>
+            <div class="semana-data" contenteditable="true">11/05/2026 a 17/05/2026</div>
+          </div>
+
+          <div class="dias">
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Segunda</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
+              </div>
+            </article>
+
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Terça</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Antônia Oliveira<br>Miraneide Lopes</div></div>
+              </div>
+            </article>
+
+            <article class="dia-card">
+              <div class="dia-nome" contenteditable="true">Quinta</div>
+              <div class="dia-corpo">
+                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
+                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Tatiana Fernandes</div></div>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section class="rodape-quote">
+        <div class="livro-icone">▯</div>
+        <div class="texto-rodape-quote" contenteditable="true">Continuem proclamando estas coisas,<br>seja oportuno ou não oportuno.<br>— 2 Timóteo 4:2 (TNM)</div>
+      </section>
+    </section>
+
+    <footer class="rodape-final">
+      <div class="globo">◎</div>
+      <div contenteditable="true">Para mais informações, visite o site oficial das Testemunhas de Jeová:</div>
+      <div class="site" contenteditable="true">www.jw.org</div>
+    </footer>
+  </main>
+
+  <script>
+    const STORAGE_KEY = 'escala-testemunho-publico-cartoes-v1';
+    const MANUAL_KEY = 'escala-testemunho-publico-cartoes-manual-v1';
+    const folha = document.getElementById('folha');
+    const modeloInicial = folha.innerHTML;
+
+    function obterDadosAtuais() {
+      return {
+        html: folha.innerHTML,
+        imagemTopo: localStorage.getItem('imagem-topo-cartoes') || '',
+        imagemBaixo: localStorage.getItem('imagem-baixo-cartoes') || '',
+        salvoEm: new Date().toLocaleString('pt-BR')
+      };
+    }
+
+    function aplicarDados(dados) {
+      if (!dados || !dados.html) return;
+      folha.innerHTML = dados.html;
+      aplicarImagemSalva('topo', dados.imagemTopo || '');
+      aplicarImagemSalva('baixo', dados.imagemBaixo || '');
+      alternarSemanas();
+      ajustarLayout();
+    }
+
+    function salvarAutomaticamente() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(obterDadosAtuais()));
+    }
+
+    function carregarSalvo() {
+      const salvo = localStorage.getItem(STORAGE_KEY);
+      if (!salvo) return;
+
+      try {
+        aplicarDados(JSON.parse(salvo));
+      } catch (erro) {
+        folha.innerHTML = salvo;
+      }
+    }
+
+    function salvarVersaoManual() {
+      localStorage.setItem(MANUAL_KEY, JSON.stringify(obterDadosAtuais()));
+      alert('Versão atual salva.');
+    }
+
+    function restaurarVersaoManual() {
+      const salvo = localStorage.getItem(MANUAL_KEY);
+      if (!salvo) {
+        alert('Ainda não existe uma versão manual salva.');
+        return;
+      }
+
+      try {
+        const dados = JSON.parse(salvo);
+        const confirmar = confirm(`Restaurar a versão salva${dados.salvoEm ? ' em ' + dados.salvoEm : ''}?`);
+        if (!confirmar) return;
+        aplicarDados(dados);
+        salvarAutomaticamente();
+      } catch (erro) {
+        alert('Não foi possível restaurar a versão salva.');
+      }
+    }
+
+    function aplicarImagem(tipo) {
+      const input = document.getElementById(tipo === 'topo' ? 'urlTopo' : 'urlBaixo');
+      aplicarImagemSalva(tipo, input.value.trim());
+      salvarAutomaticamente();
+    }
+
+    function aplicarImagemSalva(tipo, url) {
+      const varNome = tipo === 'topo' ? '--img-topo' : '--img-baixo';
+      const classe = tipo === 'topo' ? 'com-img-topo' : 'com-img-baixo';
+      const storage = tipo === 'topo' ? 'imagem-topo-cartoes' : 'imagem-baixo-cartoes';
+      const input = document.getElementById(tipo === 'topo' ? 'urlTopo' : 'urlBaixo');
+
+      if (input) input.value = url;
+      localStorage.setItem(storage, url);
+
+      if (url) {
+        folha.style.setProperty(varNome, `url("${url}")`);
+        folha.classList.add(classe);
+      } else {
+        folha.style.setProperty(varNome, 'none');
+        folha.classList.remove(classe);
+      }
+    }
+
+    function adicionarSemana() {
+      const area = document.getElementById('areaSemanas');
+      const ultima = area.querySelector('.semana:last-child');
+      const nova = ultima.cloneNode(true);
+
+      nova.querySelector('.semana-data').innerHTML = 'Nova semana';
+
+      const cards = nova.querySelectorAll('.dia-card');
+      cards.forEach((card, index) => {
+        const dia = card.querySelector('.dia-nome');
+        const textos = card.querySelectorAll('.campo-texto');
+
+        dia.innerHTML = index === 0 ? 'Segunda' : index === 1 ? 'Terça' : 'Quinta';
+        textos[0].innerHTML = index === 1 ? 'PRAÇA' : 'CREAS';
+        textos[1].innerHTML = index === 1 ? '16:00–18:00' : '07:00–10:00';
+        textos[2].innerHTML = 'Por definir';
+      });
+
+      area.appendChild(nova);
+      alternarSemanas();
+      ajustarLayout();
+      salvarAutomaticamente();
+    }
+
+    function removerUltimaSemana() {
+      const semanas = document.querySelectorAll('.semana');
+      if (semanas.length <= 1) return;
+      semanas[semanas.length - 1].remove();
+      alternarSemanas();
+      ajustarLayout();
+      salvarAutomaticamente();
+    }
+
+    function alternarSemanas() {
+      document.querySelectorAll('.semana').forEach((semana, index) => {
+        semana.classList.toggle('azul', index % 2 === 0);
+        semana.classList.toggle('verde', index % 2 === 1);
+        const numero = semana.querySelector('.semana-numero');
+        if (numero) numero.textContent = `SEM. ${index + 1}`;
+      });
+    }
+
+    function ajustarLayout() {
+      const total = document.querySelectorAll('.semana').length;
+      folha.classList.remove('compacto-3', 'compacto-4');
+      if (total === 3) folha.classList.add('compacto-3');
+      if (total >= 4) folha.classList.add('compacto-4');
+    }
+
+    function limparCampos() {
+      document.querySelectorAll('.semana-data, .campo-texto').forEach((el) => {
+        el.innerHTML = '';
+      });
+      salvarAutomaticamente();
+    }
+
+    function restaurarModelo() {
+      folha.innerHTML = modeloInicial;
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem('imagem-topo-cartoes');
+      localStorage.removeItem('imagem-baixo-cartoes');
+      aplicarImagemSalva('topo', '');
+      aplicarImagemSalva('baixo', '');
+      alternarSemanas();
+      ajustarLayout();
+    }
+
+    document.addEventListener('input', (event) => {
+      if (event.target.closest('#folha')) {
+        ajustarLayout();
+        salvarAutomaticamente();
+      }
+    });
+
+    document.addEventListener('keydown', (event) => {
+      const editavel = event.target.closest('[contenteditable="true"]');
+      if (!editavel) return;
+
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        const campos = [...document.querySelectorAll('#folha [contenteditable="true"]')];
+        const atual = campos.indexOf(editavel);
+        const proximo = event.shiftKey ? campos[atual - 1] : campos[atual + 1];
+        if (proximo) proximo.focus();
+      }
+    });
+
+    carregarSalvo();
+    alternarSemanas();
+    ajustarLayout();
+  </script>
+</body>
+</html>

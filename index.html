@@ -18,14 +18,13 @@
       --papel: #ffffff;
       --img-topo: none;
       --img-baixo: none;
+      --colunas: 3;
       --fs-titulo: 42px;
       --fs-versiculo: 18px;
-      --fs-data: 24px;
       --fs-dia: 20px;
       --fs-texto: 17px;
       --card-padding: 16px;
       --gap: 14px;
-      --semana-gap: 18px;
       --header-height: 154px;
     }
 
@@ -397,68 +396,25 @@
     .icone-pessoas span::before { left: 1px; }
     .icone-pessoas span::after { right: 1px; }
 
-    .area-semanas {
-      display: grid;
-      gap: var(--semana-gap);
-    }
-
-    .semana {
-      border: 2px solid rgba(23,63,114,.18);
-      border-radius: 18px;
-      overflow: hidden;
-      background: rgba(255,255,255,.94);
-      box-shadow: 0 5px 18px rgba(23,63,114,.06);
-    }
-
-    .semana.verde {
-      border-color: rgba(66,107,40,.20);
-    }
-
-    .semana-topo {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      gap: 12px;
-      align-items: center;
-      padding: 12px 16px;
-      background: linear-gradient(90deg, var(--azul-claro), rgba(255,255,255,.92));
-      border-bottom: 1px solid rgba(23,63,114,.14);
-    }
-
-    .semana.verde .semana-topo {
-      background: linear-gradient(90deg, var(--verde-claro), rgba(255,255,255,.92));
-      border-bottom-color: rgba(66,107,40,.14);
-    }
-
-    .semana-numero {
-      display: grid;
-      place-items: center;
-      min-width: 46px;
-      height: 46px;
-      padding: 0 8px;
-      border-radius: 14px;
-      color: #fff;
-      background: var(--azul);
-      font-weight: 800;
-      font-size: 16px;
-    }
-
-    .semana.verde .semana-numero { background: var(--verde); }
-
-    .semana-data {
+    .resumo-periodo {
+      display: inline-block;
+      margin: 0 0 13px 2px;
+      padding: 8px 14px;
+      border-radius: 999px;
       color: var(--azul);
-      font-size: var(--fs-data);
-      line-height: 1.2;
-      font-weight: 800;
+      background: rgba(230,240,251,.9);
+      border: 1px solid rgba(23,63,114,.14);
+      font-size: 15px;
+      font-weight: 700;
       outline: none;
     }
 
-    .semana.verde .semana-data { color: var(--verde); }
-
-    .dias {
+    .grade-dias {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(var(--colunas), 1fr);
       gap: var(--gap);
-      padding: var(--gap);
+      position: relative;
+      z-index: 2;
     }
 
     .dia-card {
@@ -466,7 +422,16 @@
       border: 1px solid var(--borda);
       border-radius: 16px;
       overflow: hidden;
-      background: #ffffff;
+      background: rgba(255,255,255,.96);
+      box-shadow: 0 5px 18px rgba(23,63,114,.06);
+    }
+
+    .dia-card:nth-child(odd) {
+      border-color: rgba(23,63,114,.18);
+    }
+
+    .dia-card:nth-child(even) {
+      border-color: rgba(66,107,40,.20);
     }
 
     .dia-nome {
@@ -474,14 +439,14 @@
       color: #fff;
       background: linear-gradient(180deg, var(--azul-medio), var(--azul));
       font-size: var(--fs-dia);
-      line-height: 1.1;
+      line-height: 1.15;
       font-weight: 800;
       text-transform: uppercase;
       text-align: center;
       outline: none;
     }
 
-    .semana.verde .dia-nome {
+    .dia-card:nth-child(even) .dia-nome {
       background: linear-gradient(180deg, var(--verde-medio), var(--verde));
     }
 
@@ -512,7 +477,7 @@
       white-space: pre-wrap;
     }
 
-    .responsaveis .campo-texto {
+    .designados .campo-texto {
       min-height: 43px;
     }
 
@@ -584,25 +549,22 @@
     }
 
     .folha.compacto-3 {
-      --fs-titulo: 36px;
+      --fs-titulo: 37px;
       --fs-versiculo: 15px;
-      --fs-data: 19px;
       --fs-dia: 16px;
       --fs-texto: 13px;
       --card-padding: 10px;
-      --gap: 8px;
-      --semana-gap: 9px;
+      --gap: 9px;
       --header-height: 118px;
     }
 
     .folha.compacto-3 .conteudo { padding-top: 24px; }
     .folha.compacto-3 .subtitulo { margin-top: 9px; width: 410px; }
     .folha.compacto-3 .linha-decorativa { margin-top: 8px; width: 390px; }
-    .folha.compacto-3 .semana-topo { padding: 8px 12px; }
-    .folha.compacto-3 .semana-numero { min-width: 38px; height: 38px; border-radius: 12px; font-size: 13px; }
-    .folha.compacto-3 .dia-nome { padding: 8px 10px; }
+    .folha.compacto-3 .resumo-periodo { margin-bottom: 8px; padding: 6px 11px; font-size: 12px; }
+    .folha.compacto-3 .dia-nome { padding: 8px 9px; }
     .folha.compacto-3 .dia-corpo { gap: 6px; }
-    .folha.compacto-3 .responsaveis .campo-texto { min-height: 33px; }
+    .folha.compacto-3 .designados .campo-texto { min-height: 33px; }
     .folha.compacto-3 .rodape-quote { width: 405px; min-height: 64px; margin-top: 9px; padding: 9px 12px; }
     .folha.compacto-3 .livro-icone { flex-basis: 46px; height: 46px; font-size: 27px; }
     .folha.compacto-3 .texto-rodape-quote { font-size: 12px; }
@@ -610,12 +572,10 @@
     .folha.compacto-4 {
       --fs-titulo: 31px;
       --fs-versiculo: 13px;
-      --fs-data: 16px;
       --fs-dia: 13px;
       --fs-texto: 11px;
       --card-padding: 7px;
       --gap: 6px;
-      --semana-gap: 6px;
       --header-height: 91px;
     }
 
@@ -625,13 +585,11 @@
     .folha.compacto-4 .linha-decorativa { display: none; }
     .folha.compacto-4 .decor-topo { height: 126px; }
     .folha.compacto-4 .decor-baixo { height: 120px; bottom: 34px; }
-    .folha.compacto-4 .semana { border-radius: 13px; }
-    .folha.compacto-4 .semana-topo { padding: 6px 10px; gap: 8px; }
-    .folha.compacto-4 .semana-numero { min-width: 31px; height: 31px; border-radius: 10px; font-size: 10px; }
+    .folha.compacto-4 .resumo-periodo { margin-bottom: 6px; padding: 5px 9px; font-size: 10px; }
     .folha.compacto-4 .dia-card { border-radius: 11px; }
-    .folha.compacto-4 .dia-nome { padding: 6px 8px; }
+    .folha.compacto-4 .dia-nome { padding: 6px 7px; }
     .folha.compacto-4 .dia-corpo { gap: 4px; }
-    .folha.compacto-4 .responsaveis .campo-texto { min-height: 26px; }
+    .folha.compacto-4 .designados .campo-texto { min-height: 26px; }
     .folha.compacto-4 .rodape-quote { width: 350px; min-height: 50px; margin-top: 6px; padding: 7px 10px; gap: 9px; }
     .folha.compacto-4 .livro-icone { flex-basis: 36px; height: 36px; font-size: 22px; }
     .folha.compacto-4 .texto-rodape-quote { font-size: 10px; line-height: 1.16; }
@@ -682,8 +640,10 @@
 <body>
   <div class="barra-controles">
     <div class="linha-controles">
-      <button type="button" onclick="adicionarSemana()">+ Incluir semana</button>
-      <button type="button" onclick="removerUltimaSemana()">Remover última semana</button>
+      <button type="button" onclick="adicionarColuna()">+ Coluna</button>
+      <button type="button" onclick="removerColuna()">Remover coluna</button>
+      <button type="button" onclick="adicionarLinha()">+ Linha</button>
+      <button type="button" onclick="removerLinha()">Remover linha</button>
       <button type="button" onclick="salvarVersaoManual()">Salvar versão atual</button>
       <button type="button" onclick="restaurarVersaoManual()">Restaurar versão salva</button>
       <button type="button" onclick="window.print()">Imprimir / Salvar em PDF</button>
@@ -709,7 +669,7 @@
   </div>
 
   <div class="aviso">
-    Visual reorganizado em cartões: cada dia mostra Local, Horário e Responsáveis juntos. Clique nos textos para editar. Use “+ Incluir semana” para acrescentar semanas. Para PDF: A4, margens “Nenhuma” e “Gráficos de segundo plano” ativado.
+    Novo padrão: 3 colunas por 2 linhas, com a data junto ao dia. Use os botões para adicionar ou remover colunas e linhas. Clique nos textos para editar.
   </div>
 
   <main class="folha" id="folha">
@@ -741,78 +701,62 @@
         <div class="linha-decorativa" aria-hidden="true"><div class="icone-pessoas"><span></span></div></div>
       </header>
 
-      <section class="area-semanas" id="areaSemanas">
-        <section class="semana azul">
-          <div class="semana-topo">
-            <div class="semana-numero">SEM. 1</div>
-            <div class="semana-data" contenteditable="true">04/05/2026 a 10/05/2026</div>
+      <div class="resumo-periodo" contenteditable="true">Período: 04/05/2026 a 14/05/2026</div>
+
+      <section class="grade-dias" id="gradeDias">
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Segunda — 04/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">SESP</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
           </div>
+        </article>
 
-          <div class="dias">
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Segunda</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
-              </div>
-            </article>
-
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Terça</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
-              </div>
-            </article>
-
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Quinta</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Antônia Oliveira</div></div>
-              </div>
-            </article>
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Terça — 05/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
           </div>
-        </section>
+        </article>
 
-        <section class="semana verde">
-          <div class="semana-topo">
-            <div class="semana-numero">SEM. 2</div>
-            <div class="semana-data" contenteditable="true">11/05/2026 a 17/05/2026</div>
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Quinta — 07/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">SESP</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Antônia Oliveira</div></div>
           </div>
+        </article>
 
-          <div class="dias">
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Segunda</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
-              </div>
-            </article>
-
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Terça</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Antônia Oliveira<br>Miraneide Lopes</div></div>
-              </div>
-            </article>
-
-            <article class="dia-card">
-              <div class="dia-nome" contenteditable="true">Quinta</div>
-              <div class="dia-corpo">
-                <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">CREAS</div></div>
-                <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
-                <div class="campo responsaveis"><div class="campo-label">Responsáveis</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Tatiana Fernandes</div></div>
-              </div>
-            </article>
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Segunda — 11/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">SESP</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
           </div>
-        </section>
+        </article>
+
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Terça — 12/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">PRAÇA</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">16:00–18:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Antônia Oliveira<br>Miraneide Lopes</div></div>
+          </div>
+        </article>
+
+        <article class="dia-card">
+          <div class="dia-nome" contenteditable="true">Quinta — 14/05</div>
+          <div class="dia-corpo">
+            <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">SESP</div></div>
+            <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+            <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Igor Nascimento<br>Tatiana Fernandes</div></div>
+          </div>
+        </article>
       </section>
 
       <section class="rodape-quote">
@@ -829,16 +773,48 @@
   </main>
 
   <script>
-    const STORAGE_KEY = 'escala-testemunho-publico-cartoes-v1';
-    const MANUAL_KEY = 'escala-testemunho-publico-cartoes-manual-v1';
+    const STORAGE_KEY = 'escala-testemunho-publico-grade-v1';
+    const MANUAL_KEY = 'escala-testemunho-publico-grade-manual-v1';
+    const COLUNAS_KEY = 'escala-testemunho-publico-colunas-v1';
     const folha = document.getElementById('folha');
     const modeloInicial = folha.innerHTML;
+    const colunasIniciais = 3;
+
+    function obterColunas() {
+      return Number(localStorage.getItem(COLUNAS_KEY)) || colunasIniciais;
+    }
+
+    function definirColunas(valor) {
+      const colunas = Math.max(1, Math.min(5, Number(valor) || 3));
+      localStorage.setItem(COLUNAS_KEY, String(colunas));
+      folha.style.setProperty('--colunas', colunas);
+      ajustarLayout();
+    }
+
+    function obterLinhas() {
+      return Math.ceil(document.querySelectorAll('.dia-card').length / obterColunas());
+    }
+
+    function criarCardPadrao() {
+      const card = document.createElement('article');
+      card.className = 'dia-card';
+      card.innerHTML = `
+        <div class="dia-nome" contenteditable="true">Novo dia — data</div>
+        <div class="dia-corpo">
+          <div class="campo"><div class="campo-label">Local</div><div class="campo-texto" contenteditable="true">SESP</div></div>
+          <div class="campo"><div class="campo-label">Horário</div><div class="campo-texto" contenteditable="true">07:00–10:00</div></div>
+          <div class="campo designados"><div class="campo-label">Designados</div><div class="campo-texto" contenteditable="true" data-placeholder="Digite os nomes">Por definir</div></div>
+        </div>
+      `;
+      return card;
+    }
 
     function obterDadosAtuais() {
       return {
         html: folha.innerHTML,
-        imagemTopo: localStorage.getItem('imagem-topo-cartoes') || '',
-        imagemBaixo: localStorage.getItem('imagem-baixo-cartoes') || '',
+        colunas: obterColunas(),
+        imagemTopo: localStorage.getItem('imagem-topo-grade') || '',
+        imagemBaixo: localStorage.getItem('imagem-baixo-grade') || '',
         salvoEm: new Date().toLocaleString('pt-BR')
       };
     }
@@ -846,9 +822,9 @@
     function aplicarDados(dados) {
       if (!dados || !dados.html) return;
       folha.innerHTML = dados.html;
+      definirColunas(dados.colunas || 3);
       aplicarImagemSalva('topo', dados.imagemTopo || '');
       aplicarImagemSalva('baixo', dados.imagemBaixo || '');
-      alternarSemanas();
       ajustarLayout();
     }
 
@@ -858,12 +834,16 @@
 
     function carregarSalvo() {
       const salvo = localStorage.getItem(STORAGE_KEY);
-      if (!salvo) return;
+      if (!salvo) {
+        definirColunas(colunasIniciais);
+        return;
+      }
 
       try {
         aplicarDados(JSON.parse(salvo));
       } catch (erro) {
         folha.innerHTML = salvo;
+        definirColunas(colunasIniciais);
       }
     }
 
@@ -899,7 +879,7 @@
     function aplicarImagemSalva(tipo, url) {
       const varNome = tipo === 'topo' ? '--img-topo' : '--img-baixo';
       const classe = tipo === 'topo' ? 'com-img-topo' : 'com-img-baixo';
-      const storage = tipo === 'topo' ? 'imagem-topo-cartoes' : 'imagem-baixo-cartoes';
+      const storage = tipo === 'topo' ? 'imagem-topo-grade' : 'imagem-baixo-grade';
       const input = document.getElementById(tipo === 'topo' ? 'urlTopo' : 'urlBaixo');
 
       if (input) input.value = url;
@@ -914,57 +894,75 @@
       }
     }
 
-    function adicionarSemana() {
-      const area = document.getElementById('areaSemanas');
-      const ultima = area.querySelector('.semana:last-child');
-      const nova = ultima.cloneNode(true);
-
-      nova.querySelector('.semana-data').innerHTML = 'Nova semana';
-
-      const cards = nova.querySelectorAll('.dia-card');
-      cards.forEach((card, index) => {
-        const dia = card.querySelector('.dia-nome');
-        const textos = card.querySelectorAll('.campo-texto');
-
-        dia.innerHTML = index === 0 ? 'Segunda' : index === 1 ? 'Terça' : 'Quinta';
-        textos[0].innerHTML = index === 1 ? 'PRAÇA' : 'CREAS';
-        textos[1].innerHTML = index === 1 ? '16:00–18:00' : '07:00–10:00';
-        textos[2].innerHTML = 'Por definir';
-      });
-
-      area.appendChild(nova);
-      alternarSemanas();
+    function adicionarLinha() {
+      const grade = document.getElementById('gradeDias');
+      const colunas = obterColunas();
+      for (let i = 0; i < colunas; i++) grade.appendChild(criarCardPadrao());
       ajustarLayout();
       salvarAutomaticamente();
     }
 
-    function removerUltimaSemana() {
-      const semanas = document.querySelectorAll('.semana');
-      if (semanas.length <= 1) return;
-      semanas[semanas.length - 1].remove();
-      alternarSemanas();
+    function removerLinha() {
+      const grade = document.getElementById('gradeDias');
+      const colunas = obterColunas();
+      const cards = [...grade.querySelectorAll('.dia-card')];
+      if (cards.length <= colunas) return;
+      cards.slice(-colunas).forEach(card => card.remove());
       ajustarLayout();
       salvarAutomaticamente();
     }
 
-    function alternarSemanas() {
-      document.querySelectorAll('.semana').forEach((semana, index) => {
-        semana.classList.toggle('azul', index % 2 === 0);
-        semana.classList.toggle('verde', index % 2 === 1);
-        const numero = semana.querySelector('.semana-numero');
-        if (numero) numero.textContent = `SEM. ${index + 1}`;
-      });
+    function adicionarColuna() {
+      const colunas = obterColunas();
+      if (colunas >= 5) return;
+      const grade = document.getElementById('gradeDias');
+      const cards = [...grade.querySelectorAll('.dia-card')];
+      const linhas = Math.ceil(cards.length / colunas);
+      const novaLista = [];
+
+      for (let linha = 0; linha < linhas; linha++) {
+        const inicio = linha * colunas;
+        novaLista.push(...cards.slice(inicio, inicio + colunas));
+        novaLista.push(criarCardPadrao());
+      }
+
+      grade.innerHTML = '';
+      novaLista.forEach(card => grade.appendChild(card));
+      definirColunas(colunas + 1);
+      salvarAutomaticamente();
+    }
+
+    function removerColuna() {
+      const colunas = obterColunas();
+      if (colunas <= 1) return;
+      const grade = document.getElementById('gradeDias');
+      const cards = [...grade.querySelectorAll('.dia-card')];
+      const linhas = Math.ceil(cards.length / colunas);
+      const novaLista = [];
+
+      for (let linha = 0; linha < linhas; linha++) {
+        const inicio = linha * colunas;
+        novaLista.push(...cards.slice(inicio, inicio + colunas - 1));
+      }
+
+      grade.innerHTML = '';
+      novaLista.forEach(card => grade.appendChild(card));
+      definirColunas(colunas - 1);
+      salvarAutomaticamente();
     }
 
     function ajustarLayout() {
-      const total = document.querySelectorAll('.semana').length;
+      const total = document.querySelectorAll('.dia-card').length;
+      const colunas = obterColunas();
+      const linhas = Math.ceil(total / colunas);
       folha.classList.remove('compacto-3', 'compacto-4');
-      if (total === 3) folha.classList.add('compacto-3');
-      if (total >= 4) folha.classList.add('compacto-4');
+
+      if (linhas >= 3 || colunas >= 4) folha.classList.add('compacto-3');
+      if (linhas >= 4 || colunas >= 5) folha.classList.add('compacto-4');
     }
 
     function limparCampos() {
-      document.querySelectorAll('.semana-data, .campo-texto').forEach((el) => {
+      document.querySelectorAll('.resumo-periodo, .dia-nome, .campo-texto').forEach((el) => {
         el.innerHTML = '';
       });
       salvarAutomaticamente();
@@ -973,11 +971,12 @@
     function restaurarModelo() {
       folha.innerHTML = modeloInicial;
       localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem('imagem-topo-cartoes');
-      localStorage.removeItem('imagem-baixo-cartoes');
+      localStorage.removeItem(COLUNAS_KEY);
+      localStorage.removeItem('imagem-topo-grade');
+      localStorage.removeItem('imagem-baixo-grade');
+      definirColunas(colunasIniciais);
       aplicarImagemSalva('topo', '');
       aplicarImagemSalva('baixo', '');
-      alternarSemanas();
       ajustarLayout();
     }
 
@@ -1002,7 +1001,6 @@
     });
 
     carregarSalvo();
-    alternarSemanas();
     ajustarLayout();
   </script>
 </body>

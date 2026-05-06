@@ -1,0 +1,119 @@
+import { useMemo, useState } from 'react';
+
+export default function MinisterioCampoPage() { const [programacao, setProgramacao] = useState([ { dia: 'Quarta', local: 'Sueli', horario: '07h45', dirigente: 'Gisleno' }, { dia: 'Quarta', local: 'Adelmo', horario: '17h00', dirigente: 'Simon' }, { dia: 'Quinta', local: 'Zoom', horario: '08h15', dirigente: 'Gisleno' }, { dia: 'Sexta', local: 'Salão do Reino', horario: '07h45', dirigente: 'Igor' }, { dia: 'Sexta', local: 'José', horario: '17h00', dirigente: 'José' }, { dia: 'Sábado', local: 'Salão do Reino', horario: '07h45', dirigente: 'José' }, { dia: 'Domingo', local: 'Salão do Reino', horario: '08h15', dirigente: 'Gisleno' }, { dia: 'Domingo', local: 'Adelmo', horario: '08h15', dirigente: 'Igor' }, ]);
+
+const [grupos, setGrupos] = useState({ centro: [ 'Gisleno Pinheiro (SG)', 'Morlânia Pinheiro', 'José Bezerra', 'Suenir Nascimento', 'Lara Silva', 'Gabriel Albuquerque', 'Miraneide Augusto', 'Mosirene Lima', 'Francisco Sales', 'Célia Nogueira', 'João Carneiro', 'Francilene Carneiro', 'Olimpio Ferreira', 'Lúcia Silva', ], norte: [ 'Igor Gabriel (SG)', 'Tatiana Fernandes', 'Adelmo Martins', 'Evirlane Martins', 'Rebeca Martins', 'Sueli Barbosa', 'Simon Marinho', 'Jardênia Peixoto', 'Antônia Pereira', 'Alexsander Freitas', 'Sineide Marinho', 'Marizete Pereira', 'Tainara', ], });
+
+const linhasGrupos = useMemo(() => { const total = Math.max(grupos.centro.length, grupos.norte.length); return Array.from({ length: total }, (_, i) => ({ centro: grupos.centro[i] || '', norte: grupos.norte[i] || '', })); }, [grupos]);
+
+function atualizarProgramacao(index, campo, valor) { setProgramacao((atual) => atual.map((item, i) => (i === index ? { ...item, [campo]: valor } : item)) ); }
+
+function adicionarLinhaProgramacao() { setProgramacao((atual) => [ ...atual, { dia: '', local: '', horario: '', dirigente: '' }, ]); }
+
+function excluirLinhaProgramacao(index) { setProgramacao((atual) => atual.filter((_, i) => i !== index)); }
+
+function atualizarGrupo(chave, index, valor) { setGrupos((atual) => ({ ...atual, [chave]: atual[chave].map((nome, i) => (i === index ? valor : nome)), })); }
+
+function adicionarPessoa(chave) { setGrupos((atual) => ({ ...atual, [chave]: [...atual[chave], ''] })); }
+
+function excluirPessoa(chave, index) { setGrupos((atual) => ({ ...atual, [chave]: atual[chave].filter((_, i) => i !== index), })); }
+
+function salvar() { localStorage.setItem('ministerio-campo-programacao', JSON.stringify({ programacao, grupos })); alert('Programação salva neste navegador.'); }
+
+function restaurar() { const salvo = localStorage.getItem('ministerio-campo-programacao'); if (!salvo) return alert('Nenhuma programação salva encontrada.'); const dados = JSON.parse(salvo); setProgramacao(dados.programacao || programacao); setGrupos(dados.grupos || grupos); }
+
+return ( <div className="min-h-screen bg-neutral-200 p-4 text-neutral-950 print:bg-white print:p-0"> <style>{@media print { .no-print { display: none !important; } .pagina { box-shadow: none !important; margin: 0 !important; width: 100% !important; } input { border: none !important; background: transparent !important; } }}</style>
+
+<div className="no-print mx-auto mb-4 flex max-w-[900px] flex-wrap gap-2 rounded-xl bg-white p-3 shadow">
+    <button onClick={adicionarLinhaProgramacao} className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white">+ Linha na programação</button>
+    <button onClick={() => adicionarPessoa('centro')} className="rounded-lg bg-neutral-700 px-4 py-2 text-sm font-semibold text-white">+ Pessoa Centro</button>
+    <button onClick={() => adicionarPessoa('norte')} className="rounded-lg bg-neutral-700 px-4 py-2 text-sm font-semibold text-white">+ Pessoa Norte</button>
+    <button onClick={salvar} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Salvar</button>
+    <button onClick={restaurar} className="rounded-lg bg-blue-100 px-4 py-2 text-sm font-semibold text-blue-900">Restaurar</button>
+    <button onClick={() => window.print()} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white">Imprimir / PDF</button>
+  </div>
+
+  <main className="pagina mx-auto w-full max-w-[900px] bg-white p-5 shadow-2xl print:max-w-none print:p-3">
+    <section className="mb-7 border-2 border-black">
+      <h1 className="border-b-2 border-black py-4 text-center text-2xl font-black uppercase tracking-wide">
+        Programação do Ministério de Campo
+      </h1>
+
+      <table className="w-full border-collapse text-center text-xl">
+        <thead>
+          <tr className="uppercase">
+            <th className="border-b-2 border-r-2 border-black p-2 text-base font-black">Dia da Semana</th>
+            <th className="border-b-2 border-r-2 border-black p-2 text-base font-black">Local de Saída</th>
+            <th className="border-b-2 border-r-2 border-black p-2 text-base font-black">Horário</th>
+            <th className="border-b-2 border-black p-2 text-base font-black">Dirigente</th>
+          </tr>
+        </thead>
+        <tbody>
+          {programacao.map((item, index) => (
+            <tr key={index}>
+              {['dia', 'local', 'horario', 'dirigente'].map((campo, campoIndex) => (
+                <td key={campo} className={`${campoIndex < 3 ? 'border-r-2' : ''} border-b-2 border-dotted border-black p-0`}>
+                  <input
+                    value={item[campo]}
+                    onChange={(e) => atualizarProgramacao(index, campo, e.target.value)}
+                    className="w-full bg-transparent px-2 py-1.5 text-center outline-none"
+                  />
+                </td>
+              ))}
+              <td className="no-print w-10 border-b-2 border-dotted border-black p-1">
+                <button onClick={() => excluirLinhaProgramacao(index)} className="rounded bg-red-100 px-2 text-sm text-red-700">×</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+
+    <section className="border-2 border-black">
+      <h2 className="border-b-2 border-black py-4 text-center text-2xl font-black uppercase tracking-wide">
+        Grupos de Campo
+      </h2>
+
+      <table className="w-full border-collapse text-center text-xl">
+        <thead>
+          <tr className="uppercase">
+            <th className="w-1/2 border-b-2 border-r-2 border-black p-2 text-lg font-black">Grupo Centro</th>
+            <th className="w-1/2 border-b-2 border-black p-2 text-lg font-black">Grupo Norte</th>
+          </tr>
+        </thead>
+        <tbody>
+          {linhasGrupos.map((linha, index) => (
+            <tr key={index}>
+              <td className="border-b-2 border-r-2 border-dotted border-black p-0">
+                <div className="flex items-center">
+                  <input
+                    value={linha.centro}
+                    onChange={(e) => atualizarGrupo('centro', index, e.target.value)}
+                    className="w-full bg-transparent px-2 py-1.5 text-center outline-none"
+                  />
+                  {index < grupos.centro.length && (
+                    <button onClick={() => excluirPessoa('centro', index)} className="no-print mr-1 rounded bg-red-100 px-2 text-sm text-red-700">×</button>
+                  )}
+                </div>
+              </td>
+              <td className="border-b-2 border-dotted border-black p-0">
+                <div className="flex items-center">
+                  <input
+                    value={linha.norte}
+                    onChange={(e) => atualizarGrupo('norte', index, e.target.value)}
+                    className="w-full bg-transparent px-2 py-1.5 text-center outline-none"
+                  />
+                  {index < grupos.norte.length && (
+                    <button onClick={() => excluirPessoa('norte', index)} className="no-print mr-1 rounded bg-red-100 px-2 text-sm text-red-700">×</button>
+                  )}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  </main>
+</div>
+
+); }

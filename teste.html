@@ -1,0 +1,422 @@
+<!DOCTYPE html><html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teste de Impressão A4 - 4 páginas</title>  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --a4-width: 210mm;
+      --a4-height: 297mm;
+      --safe-top: 12mm;
+      --safe-right: 12mm;
+      --safe-bottom: 14mm;
+      --safe-left: 12mm;
+      --blue: #2563eb;
+      --red: #dc2626;
+      --green: #16a34a;
+      --orange: #f97316;
+      --purple: #7c3aed;
+      --gray: #475569;
+    }
+
+    body {
+      margin: 0;
+      background: #d9dee7;
+      font-family: Arial, Helvetica, sans-serif;
+      color: #111827;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      padding: 14px 20px;
+      background: #0f172a;
+      color: #ffffff;
+      text-align: center;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.25);
+    }
+
+    .toolbar button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 20px;
+      margin-bottom: 6px;
+      background: #38bdf8;
+      color: #082f49;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .toolbar p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #dbeafe;
+    }
+
+    .page {
+      width: var(--a4-width);
+      height: var(--a4-height);
+      margin: 18px auto;
+      background: #ffffff;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+      border: 1px solid #94a3b8;
+      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22);
+    }
+
+    .page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border: 2mm solid rgba(220, 38, 38, 0.18);
+      z-index: 20;
+    }
+
+    .safe-area {
+      position: absolute;
+      top: var(--safe-top);
+      right: var(--safe-right);
+      bottom: var(--safe-bottom);
+      left: var(--safe-left);
+      border: 1.2mm dashed rgba(37, 99, 235, 0.65);
+      padding: 9mm;
+      z-index: 3;
+    }
+
+    .cut-line {
+      position: absolute;
+      z-index: 25;
+      font-size: 8px;
+      color: #ffffff;
+      background: var(--red);
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+
+    .top-left { top: 2mm; left: 2mm; }
+    .top-right { top: 2mm; right: 2mm; }
+    .bottom-left { bottom: 2mm; left: 2mm; }
+    .bottom-right { bottom: 2mm; right: 2mm; }
+
+    .page-number {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 5mm;
+      text-align: center;
+      font-size: 11px;
+      color: #334155;
+      z-index: 30;
+    }
+
+    h1 {
+      margin: 0 0 5mm;
+      font-size: 24px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 6mm 0 3mm;
+      font-size: 15px;
+    }
+
+    p {
+      margin: 0 0 3.5mm;
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+      margin-top: 6mm;
+    }
+
+    .legend-item {
+      border-radius: 8px;
+      padding: 4mm;
+      font-size: 11px;
+      line-height: 1.35;
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+    }
+
+    .mark-blue { border-left: 6px solid var(--blue); }
+    .mark-red { border-left: 6px solid var(--red); }
+    .mark-green { border-left: 6px solid var(--green); }
+    .mark-orange { border-left: 6px solid var(--orange); }
+
+    .ruler-horizontal {
+      position: absolute;
+      left: 0;
+      right: 0;
+      height: 8mm;
+      background: repeating-linear-gradient(
+        to right,
+        #0f172a 0,
+        #0f172a 0.3mm,
+        transparent 0.3mm,
+        transparent 10mm
+      );
+      opacity: 0.45;
+      z-index: 1;
+    }
+
+    .ruler-top { top: 0; }
+    .ruler-bottom { bottom: 0; }
+
+    .ruler-vertical {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 8mm;
+      background: repeating-linear-gradient(
+        to bottom,
+        #0f172a 0,
+        #0f172a 0.3mm,
+        transparent 0.3mm,
+        transparent 10mm
+      );
+      opacity: 0.45;
+      z-index: 1;
+    }
+
+    .ruler-left { left: 0; }
+    .ruler-right { right: 0; }
+
+    .grid-page {
+      background-image:
+        linear-gradient(rgba(37, 99, 235, 0.12) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(37, 99, 235, 0.12) 1px, transparent 1px);
+      background-size: 10mm 10mm;
+    }
+
+    .color-strip {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3mm;
+      margin: 6mm 0;
+    }
+
+    .color-box {
+      height: 22mm;
+      border-radius: 10px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: center;
+      padding: 2mm;
+    }
+
+    .bg-blue { background: var(--blue); }
+    .bg-red { background: var(--red); }
+    .bg-green { background: var(--green); }
+    .bg-orange { background: var(--orange); }
+    .bg-purple { background: var(--purple); }
+
+    .height-test {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 3mm;
+      margin-top: 5mm;
+    }
+
+    .height-box {
+      height: 25mm;
+      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      padding: 3mm;
+      font-size: 11px;
+      background: #f8fafc;
+    }
+
+    .near-bottom-warning {
+      position: absolute;
+      left: 12mm;
+      right: 12mm;
+      bottom: 16mm;
+      padding: 3mm;
+      border-radius: 8px;
+      background: #fff7ed;
+      border: 1px solid #fb923c;
+      color: #9a3412;
+      font-size: 11px;
+      z-index: 10;
+    }
+
+    .bleed-test {
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(220, 38, 38, .16), transparent 18mm, transparent calc(100% - 18mm), rgba(220, 38, 38, .16)),
+        linear-gradient(180deg, rgba(220, 38, 38, .16), transparent 18mm, transparent calc(100% - 18mm), rgba(220, 38, 38, .16));
+      z-index: 0;
+    }
+
+    .content-card {
+      border-radius: 12px;
+      padding: 5mm;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      margin-bottom: 4mm;
+    }
+
+    .small-note {
+      font-size: 10.5px;
+      color: #475569;
+    }
+
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    @media print {
+      body {
+        background: #ffffff;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .page {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        border: 0;
+        box-shadow: none;
+        page-break-after: always;
+        break-after: page;
+      }
+    }
+  </style></head><body>
+  <div class="toolbar">
+    <button onclick="window.print()">Imprimir teste A4</button>
+    <p>Use A4, escala 100%, sem cabeçalho/rodapé. Ative “gráficos de fundo” para testar cores.</p>
+  </div>  <!-- PÁGINA 1 -->  <section class="page grid-page">
+    <div class="ruler-horizontal ruler-top"></div>
+    <div class="ruler-horizontal ruler-bottom"></div>
+    <div class="ruler-vertical ruler-left"></div>
+    <div class="ruler-vertical ruler-right"></div><span class="cut-line top-left">canto superior esquerdo</span>
+<span class="cut-line top-right">canto superior direito</span>
+<span class="cut-line bottom-left">canto inferior esquerdo</span>
+<span class="cut-line bottom-right">canto inferior direito</span>
+
+<div class="safe-area">
+  <h1>Página 1 — Teste de limite A4</h1>
+  <p>Esta página tem grade de 10mm, régua nas laterais e marcações nos quatro cantos. Ela serve para identificar se o navegador está reduzindo, cortando ou deslocando a impressão.</p>
+  <p>A borda vermelha clara representa a área crítica próxima ao corte. A linha azul tracejada representa uma área segura para colocar conteúdo.</p>
+
+  <div class="legend">
+    <div class="legend-item mark-blue"><strong>Azul tracejado:</strong><br>área segura para textos, imagens e blocos principais.</div>
+    <div class="legend-item mark-red"><strong>Vermelho:</strong><br>região de risco, próxima das bordas do papel.</div>
+    <div class="legend-item mark-green"><strong>Grade:</strong><br>cada quadrado equivale a aproximadamente 10mm.</div>
+    <div class="legend-item mark-orange"><strong>Rodapé:</strong><br>verifique se o número da página aparece completo.</div>
+  </div>
+</div>
+
+<div class="page-number">Página 1 / 4</div>
+
+  </section>  <!-- PÁGINA 2 -->  <section class="page">
+    <div class="bleed-test"></div><span class="cut-line top-left">2mm</span>
+<span class="cut-line top-right">208mm</span>
+<span class="cut-line bottom-left">295mm</span>
+<span class="cut-line bottom-right">fim A4</span>
+
+<div class="safe-area">
+  <h1>Página 2 — Teste de cores e fundos</h1>
+  <p>Esta página testa se as cores de fundo estão sendo impressas corretamente. No navegador, normalmente é necessário ativar a opção “gráficos de fundo”.</p>
+
+  <div class="color-strip">
+    <div class="color-box bg-blue">Azul</div>
+    <div class="color-box bg-red">Vermelho</div>
+    <div class="color-box bg-green">Verde</div>
+    <div class="color-box bg-orange">Laranja</div>
+    <div class="color-box bg-purple">Roxo</div>
+  </div>
+
+  <div class="content-card">
+    <h2>Verificação</h2>
+    <p>Depois de imprimir, observe se as faixas laterais avermelhadas aparecem próximas às bordas. Se sumirem, a impressora ou o navegador está aplicando margem automática.</p>
+  </div>
+
+  <div class="content-card">
+    <h2>Objetivo</h2>
+    <p>Comparar a visualização em tela com a folha impressa e descobrir quanto espaço real pode ser usado sem corte.</p>
+  </div>
+</div>
+
+<div class="page-number">Página 2 / 4</div>
+
+  </section>  <!-- PÁGINA 3 -->  <section class="page">
+    <span class="cut-line top-left">topo</span>
+    <span class="cut-line top-right">topo</span>
+    <span class="cut-line bottom-left">base</span>
+    <span class="cut-line bottom-right">base</span><div class="safe-area">
+  <h1>Página 3 — Teste de altura do conteúdo</h1>
+  <p>Esta página simula vários blocos de conteúdo para testar se o último bloco fica cortado ou se ainda sobra espaço antes do rodapé.</p>
+
+  <div class="height-test">
+    <div class="height-box"><strong>Bloco 1:</strong> texto dentro da área segura.</div>
+    <div class="height-box"><strong>Bloco 2:</strong> teste de espaçamento vertical.</div>
+    <div class="height-box"><strong>Bloco 3:</strong> verifique se as bordas aparecem completas.</div>
+    <div class="height-box"><strong>Bloco 4:</strong> conteúdo intermediário.</div>
+    <div class="height-box"><strong>Bloco 5:</strong> este bloco ajuda a testar o limite inferior.</div>
+    <div class="height-box"><strong>Bloco 6:</strong> se este bloco cortar, reduza padding, fonte ou altura dos blocos.</div>
+  </div>
+</div>
+
+<div class="near-bottom-warning">
+  Área próxima ao rodapé: se esta faixa sair cortada, aumente a margem inferior interna da página.
+</div>
+
+<div class="page-number">Página 3 / 4</div>
+
+  </section>  <!-- PÁGINA 4 -->  <section class="page grid-page">
+    <div class="ruler-horizontal ruler-top"></div>
+    <div class="ruler-horizontal ruler-bottom"></div>
+    <div class="ruler-vertical ruler-left"></div>
+    <div class="ruler-vertical ruler-right"></div><span class="cut-line top-left">controle final</span>
+<span class="cut-line top-right">controle final</span>
+<span class="cut-line bottom-left">controle final</span>
+<span class="cut-line bottom-right">controle final</span>
+
+<div class="safe-area">
+  <h1>Página 4 — Página modelo para conteúdo real</h1>
+  <p>Esta é uma página mais parecida com um informativo final. A ideia é testar uma combinação de título, textos, quadros e rodapé.</p>
+
+  <div class="content-card">
+    <h2>Resumo</h2>
+    <p>Use esta estrutura como base para criar informativos em HTML que serão impressos em PDF ou enviados aos clientes.</p>
+  </div>
+
+  <div class="content-card">
+    <h2>Área segura</h2>
+    <p>Todo o conteúdo principal deve ficar dentro da linha azul. Elementos decorativos podem chegar mais perto das bordas, mas não textos importantes.</p>
+  </div>
+
+  <div class="content-card">
+    <h2>Teste prático</h2>
+    <p>Ao imprimir, veja se o título, os quadros, a linha azul, os cantos vermelhos e o número da página aparecem corretamente.</p>
+  </div>
+
+  <p class="small-note">Anote o que saiu cortado: topo, base, esquerda, direita, fundos, rodapé ou conteúdo interno. Com isso dá para ajustar o tamanho exato.</p>
+</div>
+
+<div class="page-number">Página 4 / 4</div>
+
+  </section>
+</body>
+</html>

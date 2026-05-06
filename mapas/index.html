@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Editor Offline de Territórios</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --danger: #dc2626;
+      --border: #d1d5db;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+    }
+
+    header h1 {
+      font-size: 16px;
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .app {
+      height: calc(100vh - 52px);
+      display: grid;
+      grid-template-columns: 290px 1fr;
+    }
+
+    .sidebar {
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 10px;
+      overflow-y: auto;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      background: #e5e7eb;
+      touch-action: none;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      touch-action: none;
+    }
+
+    .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .section { border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 10px; }
+    .section:last-child { border-bottom: 0; }
+
+    button, label.file-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+    }
+
+    button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+    button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    button.danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 14px;
+      background: #fff;
+    }
+
+    input[type="color"] { padding: 2px; height: 38px; }
+    input[type="file"] { display: none; }
+
+    .field { margin-top: 8px; }
+    .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .hint { font-size: 12px; color: var(--muted); line-height: 1.35; margin-top: 8px; }
+
+    .list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+    .item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      background: #fff;
+    }
+    .item.selected { border-color: var(--primary); box-shadow: 0 0 0 2px rgba(37,99,235,.15); }
+    .item small { color: var(--muted); display: block; margin-top: 2px; }
+
+    .top-actions { display: flex; gap: 6px; align-items: center; overflow-x: auto; }
+
+    @media (max-width: 760px) {
+      header { height: 50px; }
+      header h1 { display: none; }
+      .app {
+        height: calc(100vh - 50px);
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 270px;
+      }
+      .sidebar {
+        grid-row: 2;
+        border-right: 0;
+        border-top: 1px solid var(--border);
+        padding: 8px;
+      }
+      .canvas-wrap { grid-row: 1; }
+      button, label.file-btn { min-height: 38px; padding: 8px 9px; }
+      .section { margin-bottom: 8px; padding-bottom: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Editor Offline de Territórios</h1>
+    <div class="top-actions">
+      <label class="file-btn">Mapa<input id="imageInput" type="file" accept="image/*" /></label>
+      <button id="saveProjectBtn">Salvar projeto</button>
+      <label class="file-btn">Reabrir projeto<input id="projectInput" type="file" accept="application/json,.json" /></label>
+      <button id="exportPngBtn" class="primary">Exportar PNG</button>
+    </div>
+  </header>
+
+  <main class="app">
+    <aside class="sidebar">
+      <div class="section">
+        <strong>Ferramentas</strong>
+        <div class="row" style="margin-top:8px">
+          <button data-tool="select" class="active">Selecionar</button>
+          <button data-tool="road">Rua</button>
+          <button data-tool="text">Nome</button>
+          <button data-tool="point">Ponto</button>
+          <button data-tool="compass">Norte</button>
+          <button data-tool="legend">Legenda</button>
+        </div>
+        <div class="hint">
+          Rua: toque ponto por ponto. Use “Concluir rua”. No celular, arraste com dois dedos para mover o mapa.
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="finishRoadBtn" disabled>Concluir rua</button>
+          <button id="cancelRoadBtn" disabled>Cancelar</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <strong>Item selecionado</strong>
+        <div class="field">
+          <label>Nome / texto</label>
+          <input id="nameInput" placeholder="Ex.: Rua São José" />
+        </div>
+        <div class="row">
+          <div class="field" style="flex:1">
+            <label>Cor</label>
+            <input id="colorInput" type="color" value="#2563eb" />
+          </div>
+          <div class="field" style="flex:1">
+            <label>Tamanho</label>
+            <input id="sizeInput" type="number" value="16" min="8" max="80" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Tipo de ponto</label>
+          <select id="iconInput">
+            <option value="●">Ponto</option>
+            <option value="✚">Saúde</option>
+            <option value="✝">Igreja</option>
+            <option value="★">Referência</option>
+            <option value="■">Prédio</option>
+            <option value="⚑">Marco</option>
+          </select>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button id="deleteBtn" class="danger">Excluir item</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <strong>Projeto</strong>
+        <div class="field">
+          <label>Nome do mapa</label>
+          <input id="projectNameInput" placeholder="Ex.: Território Centro 01" />
+        </div>
+        <div class="hint">
+          O botão “Salvar projeto” baixa um arquivo .json contendo todos os desenhos e a imagem do mapa. Para vários mapas, salve um arquivo por mapa.
+        </div>
+      </div>
+
+      <div class="section">
+        <strong>Camadas</strong>
+        <div id="objectList" class="list"></div>
+      </div>
+    </aside>
+
+    <section class="canvas-wrap" id="canvasWrap">
+      <canvas id="mapCanvas"></canvas>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+    const wrap = document.getElementById('canvasWrap');
+
+    const state = {
+      projectName: '',
+      imageData: null,
+      image: null,
+      objects: [],
+      selectedId: null,
+      tool: 'select',
+      scale: 1,
+      offsetX: 0,
+      offsetY: 0,
+      drawingRoad: [],
+      dragging: false,
+      dragMode: null,
+      lastX: 0,
+      lastY: 0,
+      pinchStartDist: 0,
+      pinchStartScale: 1,
+      pinchCenter: null
+    };
+
+    const els = {
+      imageInput: document.getElementById('imageInput'),
+      projectInput: document.getElementById('projectInput'),
+      saveProjectBtn: document.getElementById('saveProjectBtn'),
+      exportPngBtn: document.getElementById('exportPngBtn'),
+      finishRoadBtn: document.getElementById('finishRoadBtn'),
+      cancelRoadBtn: document.getElementById('cancelRoadBtn'),
+      nameInput: document.getElementById('nameInput'),
+      colorInput: document.getElementById('colorInput'),
+      sizeInput: document.getElementById('sizeInput'),
+      iconInput: document.getElementById('iconInput'),
+      deleteBtn: document.getElementById('deleteBtn'),
+      projectNameInput: document.getElementById('projectNameInput'),
+      objectList: document.getElementById('objectList')
+    };
+
+    function uid() { return Math.random().toString(36).slice(2, 10); }
+
+    function resizeCanvas() {
+      const rect = wrap.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function screenToWorld(x, y) {
+      return { x: (x - state.offsetX) / state.scale, y: (y - state.offsetY) / state.scale };
+    }
+
+    function worldToScreen(x, y) {
+      return { x: x * state.scale + state.offsetX, y: y * state.scale + state.offsetY };
+    }
+
+    function fitImage() {
+      if (!state.image) return;
+      const rect = wrap.getBoundingClientRect();
+      const sx = rect.width / state.image.width;
+      const sy = rect.height / state.image.height;
+      state.scale = Math.min(sx, sy) * 0.95;
+      state.offsetX = (rect.width - state.image.width * state.scale) / 2;
+      state.offsetY = (rect.height - state.image.height * state.scale) / 2;
+    }
+
+    function draw() {
+      const rect = wrap.getBoundingClientRect();
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.save();
+      ctx.translate(state.offsetX, state.offsetY);
+      ctx.scale(state.scale, state.scale);
+
+      if (state.image) {
+        ctx.drawImage(state.image, 0, 0);
+      } else {
+        ctx.fillStyle = '#e5e7eb';
+        ctx.fillRect(0, 0, rect.width, rect.height);
+      }
+
+      state.objects.forEach(obj => drawObject(obj));
+      if (state.drawingRoad.length) drawDraftRoad();
+      ctx.restore();
+    }
+
+    function drawObject(obj) {
+      ctx.save();
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      const selected = obj.id === state.selectedId;
+
+      if (obj.type === 'road') {
+        ctx.strokeStyle = obj.color || '#2563eb';
+        ctx.lineWidth = obj.size || 6;
+        ctx.beginPath();
+        obj.points.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+        ctx.stroke();
+        if (obj.name) {
+          const mid = obj.points[Math.floor(obj.points.length / 2)];
+          drawText(obj.name, mid.x + 8, mid.y - 8, obj.color || '#111827', obj.textSize || 16);
+        }
+        if (selected) drawPoints(obj.points);
+      }
+
+      if (obj.type === 'text') {
+        drawText(obj.name || 'Texto', obj.x, obj.y, obj.color || '#111827', obj.size || 18);
+      }
+
+      if (obj.type === 'point') {
+        ctx.fillStyle = obj.color || '#dc2626';
+        ctx.font = `${obj.size || 24}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(obj.icon || '●', obj.x, obj.y);
+        if (obj.name) drawText(obj.name, obj.x + 16, obj.y + 4, '#111827', 14, 'left');
+      }
+
+      if (obj.type === 'compass') {
+        const s = obj.size || 60;
+        ctx.strokeStyle = obj.color || '#111827';
+        ctx.fillStyle = obj.color || '#111827';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(obj.x, obj.y - s / 2);
+        ctx.lineTo(obj.x - s / 6, obj.y + s / 4);
+        ctx.lineTo(obj.x, obj.y + s / 8);
+        ctx.lineTo(obj.x + s / 6, obj.y + s / 4);
+        ctx.closePath();
+        ctx.stroke();
+        drawText('N', obj.x, obj.y - s / 2 - 12, obj.color || '#111827', 18, 'center');
+      }
+
+      if (obj.type === 'legend') {
+        const lines = (obj.name || 'Legenda\n● Ponto de referência\n— Rua').split('\n');
+        const pad = 10;
+        const lineH = obj.size || 16;
+        const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + pad * 2 + 40;
+        const h = lines.length * (lineH + 6) + pad * 2;
+        ctx.fillStyle = 'rgba(255,255,255,.88)';
+        ctx.strokeStyle = obj.color || '#111827';
+        ctx.lineWidth = 2;
+        ctx.fillRect(obj.x, obj.y, w, h);
+        ctx.strokeRect(obj.x, obj.y, w, h);
+        lines.forEach((line, i) => drawText(line, obj.x + pad, obj.y + pad + 12 + i * (lineH + 6), '#111827', lineH, 'left'));
+      }
+
+      if (selected && obj.type !== 'road') {
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = 2 / state.scale;
+        ctx.setLineDash([6 / state.scale, 4 / state.scale]);
+        const box = getObjectBox(obj);
+        ctx.strokeRect(box.x, box.y, box.w, box.h);
+      }
+      ctx.restore();
+    }
+
+    function drawText(text, x, y, color, size, align = 'center') {
+      ctx.save();
+      ctx.font = `bold ${size}px Arial`;
+      ctx.textAlign = align;
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = 'rgba(255,255,255,.85)';
+      ctx.fillStyle = color;
+      ctx.strokeText(text, x, y);
+      ctx.fillText(text, x, y);
+      ctx.restore();
+    }
+
+    function drawPoints(points) {
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 2 / state.scale;
+      points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 5 / state.scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      });
+    }
+
+    function drawDraftRoad() {
+      ctx.strokeStyle = '#2563eb';
+      ctx.lineWidth = 4;
+      ctx.setLineDash([8, 6]);
+      ctx.beginPath();
+      state.drawingRoad.forEach((p, i) => i ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y));
+      ctx.stroke();
+      ctx.setLineDash([]);
+      drawPoints(state.drawingRoad);
+    }
+
+    function getObjectBox(obj) {
+      if (obj.type === 'road') {
+        const xs = obj.points.map(p => p.x), ys = obj.points.map(p => p.y);
+        return { x: Math.min(...xs)-8, y: Math.min(...ys)-8, w: Math.max(...xs)-Math.min(...xs)+16, h: Math.max(...ys)-Math.min(...ys)+16 };
+      }
+      if (obj.type === 'legend') return { x: obj.x, y: obj.y, w: 180, h: 100 };
+      const s = obj.size || 30;
+      return { x: obj.x - s, y: obj.y - s, w: s * 2, h: s * 2 };
+    }
+
+    function hitTest(x, y) {
+      for (let i = state.objects.length - 1; i >= 0; i--) {
+        const obj = state.objects[i];
+        const box = getObjectBox(obj);
+        if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return obj;
+      }
+      return null;
+    }
+
+    function setTool(tool) {
+      state.tool = tool;
+      document.querySelectorAll('[data-tool]').forEach(btn => btn.classList.toggle('active', btn.dataset.tool === tool));
+    }
+
+    function selectObject(id) {
+      state.selectedId = id;
+      const obj = state.objects.find(o => o.id === id);
+      els.nameInput.value = obj?.name || '';
+      els.colorInput.value = obj?.color || '#2563eb';
+      els.sizeInput.value = obj?.size || obj?.textSize || 16;
+      els.iconInput.value = obj?.icon || '●';
+      renderList();
+      draw();
+    }
+
+    function selectedObject() { return state.objects.find(o => o.id === state.selectedId); }
+
+    function addObject(obj) {
+      state.objects.push({ id: uid(), color: '#2563eb', size: 18, ...obj });
+      selectObject(state.objects[state.objects.length - 1].id);
+      setTool('select');
+      renderList();
+      draw();
+    }
+
+    function renderList() {
+      els.objectList.innerHTML = '';
+      state.objects.slice().reverse().forEach(obj => {
+        const div = document.createElement('div');
+        div.className = 'item' + (obj.id === state.selectedId ? ' selected' : '');
+        const label = obj.name || ({road:'Rua sem nome', text:'Texto', point:'Ponto', compass:'Bússola', legend:'Legenda'}[obj.type] || 'Item');
+        div.innerHTML = `<strong>${label}</strong><small>${obj.type}</small>`;
+        div.onclick = () => selectObject(obj.id);
+        els.objectList.appendChild(div);
+      });
+    }
+
+    function loadImage(dataUrl, resetView = true) {
+      const img = new Image();
+      img.onload = () => {
+        state.image = img;
+        state.imageData = dataUrl;
+        if (resetView) fitImage();
+        draw();
+      };
+      img.src = dataUrl;
+    }
+
+    function canvasPoint(e) {
+      const rect = canvas.getBoundingClientRect();
+      const touch = e.touches ? e.touches[0] : e;
+      return { x: touch.clientX - rect.left, y: touch.clientY - rect.top };
+    }
+
+    function onPointerDown(e) {
+      e.preventDefault();
+      const p = canvasPoint(e);
+      const w = screenToWorld(p.x, p.y);
+
+      if (e.touches && e.touches.length === 2) {
+        state.dragMode = 'pinch';
+        state.pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
+        state.pinchStartScale = state.scale;
+        state.pinchCenter = touchCenter(e.touches[0], e.touches[1]);
+        return;
+      }
+
+      if (state.tool === 'road') {
+        state.drawingRoad.push(w);
+        els.finishRoadBtn.disabled = state.drawingRoad.length < 2;
+        els.cancelRoadBtn.disabled = false;
+        draw();
+        return;
+      }
+
+      if (state.tool === 'text') return addObject({ type:'text', x:w.x, y:w.y, name:'Nome da rua', color:'#111827', size:18 });
+      if (state.tool === 'point') return addObject({ type:'point', x:w.x, y:w.y, name:'Referência', icon:'●', color:'#dc2626', size:24 });
+      if (state.tool === 'compass') return addObject({ type:'compass', x:w.x, y:w.y, name:'Norte', color:'#111827', size:60 });
+      if (state.tool === 'legend') return addObject({ type:'legend', x:w.x, y:w.y, name:'Legenda\n● Ponto de referência\n— Rua', color:'#111827', size:16 });
+
+      const hit = hitTest(w.x, w.y);
+      if (hit) {
+        selectObject(hit.id);
+        state.dragging = true;
+        state.dragMode = 'object';
+      } else {
+        state.selectedId = null;
+        state.dragging = true;
+        state.dragMode = 'pan';
+        renderList();
+      }
+      state.lastX = p.x;
+      state.lastY = p.y;
+      draw();
+    }
+
+    function onPointerMove(e) {
+      e.preventDefault();
+      if (e.touches && e.touches.length === 2 && state.dragMode === 'pinch') {
+        const dist = touchDistance(e.touches[0], e.touches[1]);
+        const center = touchCenter(e.touches[0], e.touches[1]);
+        zoomAt(center.x - canvas.getBoundingClientRect().left, center.y - canvas.getBoundingClientRect().top, state.pinchStartScale * dist / state.pinchStartDist);
+        return;
+      }
+      if (!state.dragging) return;
+      const p = canvasPoint(e);
+      const dx = p.x - state.lastX;
+      const dy = p.y - state.lastY;
+
+      if (state.dragMode === 'pan') {
+        state.offsetX += dx;
+        state.offsetY += dy;
+      }
+
+      if (state.dragMode === 'object') {
+        const obj = selectedObject();
+        if (obj) {
+          const wx = dx / state.scale;
+          const wy = dy / state.scale;
+          if (obj.points) obj.points.forEach(pt => { pt.x += wx; pt.y += wy; });
+          else { obj.x += wx; obj.y += wy; }
+        }
+      }
+      state.lastX = p.x;
+      state.lastY = p.y;
+      draw();
+    }
+
+    function onPointerUp() {
+      state.dragging = false;
+      state.dragMode = null;
+    }
+
+    function touchDistance(a,b) { return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); }
+    function touchCenter(a,b) { return { x:(a.clientX+b.clientX)/2, y:(a.clientY+b.clientY)/2 }; }
+
+    function zoomAt(sx, sy, newScale) {
+      newScale = Math.max(0.1, Math.min(8, newScale));
+      const before = screenToWorld(sx, sy);
+      state.scale = newScale;
+      const after = worldToScreen(before.x, before.y);
+      state.offsetX += sx - after.x;
+      state.offsetY += sy - after.y;
+      draw();
+    }
+
+    canvas.addEventListener('mousedown', onPointerDown);
+    canvas.addEventListener('mousemove', onPointerMove);
+    window.addEventListener('mouseup', onPointerUp);
+    canvas.addEventListener('touchstart', onPointerDown, { passive:false });
+    canvas.addEventListener('touchmove', onPointerMove, { passive:false });
+    canvas.addEventListener('touchend', onPointerUp);
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const factor = e.deltaY < 0 ? 1.1 : 0.9;
+      zoomAt(e.clientX - rect.left, e.clientY - rect.top, state.scale * factor);
+    }, { passive:false });
+
+    document.querySelectorAll('[data-tool]').forEach(btn => btn.onclick = () => setTool(btn.dataset.tool));
+
+    els.finishRoadBtn.onclick = () => {
+      if (state.drawingRoad.length < 2) return;
+      addObject({ type:'road', points: state.drawingRoad, name:'Rua sem nome', color:'#2563eb', size:6, textSize:16 });
+      state.drawingRoad = [];
+      els.finishRoadBtn.disabled = true;
+      els.cancelRoadBtn.disabled = true;
+      draw();
+    };
+
+    els.cancelRoadBtn.onclick = () => {
+      state.drawingRoad = [];
+      els.finishRoadBtn.disabled = true;
+      els.cancelRoadBtn.disabled = true;
+      draw();
+    };
+
+    els.imageInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => loadImage(reader.result, true);
+      reader.readAsDataURL(file);
+    };
+
+    els.projectInput.onchange = e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const project = JSON.parse(reader.result);
+        state.projectName = project.projectName || '';
+        state.objects = project.objects || [];
+        state.selectedId = null;
+        els.projectNameInput.value = state.projectName;
+        if (project.imageData) loadImage(project.imageData, true);
+        renderList();
+        draw();
+      };
+      reader.readAsText(file);
+    };
+
+    els.saveProjectBtn.onclick = () => {
+      state.projectName = els.projectNameInput.value || 'mapa-territorio';
+      const project = {
+        version: 1,
+        projectName: state.projectName,
+        imageData: state.imageData,
+        objects: state.objects,
+        savedAt: new Date().toISOString()
+      };
+      downloadFile(`${safeName(state.projectName)}.json`, JSON.stringify(project, null, 2), 'application/json');
+    };
+
+    els.exportPngBtn.onclick = () => {
+      const out = document.createElement('canvas');
+      const w = state.image ? state.image.width : 1600;
+      const h = state.image ? state.image.height : 1000;
+      out.width = w;
+      out.height = h;
+      const octx = out.getContext('2d');
+      octx.fillStyle = '#fff';
+      octx.fillRect(0,0,w,h);
+      if (state.image) octx.drawImage(state.image,0,0);
+      const old = ctx;
+      window.__exportCtx = octx;
+      drawToContext(octx);
+      out.toBlob(blob => downloadBlob(`${safeName(els.projectNameInput.value || 'mapa-final')}.png`, blob));
+    };
+
+    function drawToContext(target) {
+      const original = ctx;
+      const savedCtxMethods = {};
+      const oldCtx = window.ctx;
+      const currentCtx = canvas.getContext('2d');
+      const backup = { scale: state.scale, offsetX: state.offsetX, offsetY: state.offsetY };
+      state.scale = 1; state.offsetX = 0; state.offsetY = 0;
+      const tempCtx = ctx;
+      Object.assign(ctx, target);
+      state.objects.forEach(obj => {
+        const realCtx = window.ctx;
+      });
+      const globalCtx = document.createElement('canvas').getContext('2d');
+      // Render manually using the target context.
+      const oldDrawObject = drawObject;
+      const proxy = ctx;
+      state.objects.forEach(obj => drawObjectOn(target, obj));
+      state.scale = backup.scale; state.offsetX = backup.offsetX; state.offsetY = backup.offsetY;
+    }
+
+    function drawObjectOn(c, obj) {
+      const oldProps = ['save','restore'];
+      const prev = ctx;
+      // Simple duplicate drawing logic for clean export.
+      c.save();
+      c.lineJoin = 'round';
+      c.lineCap = 'round';
+      if (obj.type === 'road') {
+        c.strokeStyle = obj.color || '#2563eb';
+        c.lineWidth = obj.size || 6;
+        c.beginPath();
+        obj.points.forEach((p, i) => i ? c.lineTo(p.x, p.y) : c.moveTo(p.x, p.y));
+        c.stroke();
+        if (obj.name) drawTextOn(c, obj.name, obj.points[Math.floor(obj.points.length/2)].x + 8, obj.points[Math.floor(obj.points.length/2)].y - 8, obj.color || '#111827', obj.textSize || 16);
+      }
+      if (obj.type === 'text') drawTextOn(c, obj.name || 'Texto', obj.x, obj.y, obj.color || '#111827', obj.size || 18);
+      if (obj.type === 'point') {
+        c.fillStyle = obj.color || '#dc2626';
+        c.font = `${obj.size || 24}px Arial`;
+        c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText(obj.icon || '●', obj.x, obj.y);
+        if (obj.name) drawTextOn(c, obj.name, obj.x + 16, obj.y + 4, '#111827', 14, 'left');
+      }
+      if (obj.type === 'compass') {
+        const s = obj.size || 60;
+        c.strokeStyle = obj.color || '#111827'; c.fillStyle = obj.color || '#111827'; c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(obj.x, obj.y - s / 2); c.lineTo(obj.x - s / 6, obj.y + s / 4); c.lineTo(obj.x, obj.y + s / 8); c.lineTo(obj.x + s / 6, obj.y + s / 4); c.closePath(); c.stroke();
+        drawTextOn(c, 'N', obj.x, obj.y - s / 2 - 12, obj.color || '#111827', 18, 'center');
+      }
+      if (obj.type === 'legend') {
+        const lines = (obj.name || 'Legenda\n● Ponto de referência\n— Rua').split('\n');
+        const pad = 10, lineH = obj.size || 16;
+        c.font = `bold ${lineH}px Arial`;
+        const w = Math.max(...lines.map(l => c.measureText(l).width)) + pad * 2 + 40;
+        const h = lines.length * (lineH + 6) + pad * 2;
+        c.fillStyle = 'rgba(255,255,255,.88)'; c.strokeStyle = obj.color || '#111827'; c.lineWidth = 2;
+        c.fillRect(obj.x, obj.y, w, h); c.strokeRect(obj.x, obj.y, w, h);
+        lines.forEach((line, i) => drawTextOn(c, line, obj.x + pad, obj.y + pad + 12 + i * (lineH + 6), '#111827', lineH, 'left'));
+      }
+      c.restore();
+    }
+
+    function drawTextOn(c, text, x, y, color, size, align = 'center') {
+      c.save();
+      c.font = `bold ${size}px Arial`; c.textAlign = align; c.textBaseline = 'middle';
+      c.lineWidth = 4; c.strokeStyle = 'rgba(255,255,255,.85)'; c.fillStyle = color;
+      c.strokeText(text, x, y); c.fillText(text, x, y); c.restore();
+    }
+
+    function downloadFile(name, content, type) {
+      const blob = new Blob([content], { type });
+      downloadBlob(name, blob);
+    }
+
+    function downloadBlob(name, blob) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 500);
+    }
+
+    function safeName(name) {
+      return String(name || 'mapa').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9-_]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'mapa';
+    }
+
+    [els.nameInput, els.colorInput, els.sizeInput, els.iconInput].forEach(el => {
+      el.addEventListener('input', () => {
+        const obj = selectedObject();
+        if (!obj) return;
+        obj.name = els.nameInput.value;
+        obj.color = els.colorInput.value;
+        if (obj.type === 'road') obj.textSize = Number(els.sizeInput.value) || 16;
+        else obj.size = Number(els.sizeInput.value) || 16;
+        obj.icon = els.iconInput.value;
+        renderList();
+        draw();
+      });
+    });
+
+    els.projectNameInput.addEventListener('input', () => state.projectName = els.projectNameInput.value);
+
+    els.deleteBtn.onclick = () => {
+      if (!state.selectedId) return;
+      state.objects = state.objects.filter(o => o.id !== state.selectedId);
+      state.selectedId = null;
+      renderList();
+      draw();
+    };
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+  </script>
+</body>
+</html>

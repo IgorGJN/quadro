@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Nossa Vida e Ministério Cristão - Modelo Editável</title>
+  <style>
+    :root {
+      --azul: #0f4f8a;
+      --azul-escuro: #06345d;
+      --azul-claro: #eaf4ff;
+      --verde: #138f91;
+      --dourado: #b77b09;
+      --vermelho: #b0272d;
+      --texto: #1e2b3c;
+      --linha: #d8e1ea;
+      --fundo: #f4f7fa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--fundo);
+      color: var(--texto);
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--linha);
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    button, .file-label {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--azul);
+      color: white;
+      font-size: 14px;
+    }
+
+    button.secondary, .file-label { background: #5b6775; }
+    button.danger { background: #a02727; }
+    button:hover, .file-label:hover { filter: brightness(.95); }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 10px auto;
+      padding: 7mm;
+      background: white;
+      box-shadow: 0 8px 30px rgba(0,0,0,.12);
+    }
+
+    .header {
+      display: grid;
+      grid-template-columns: 24mm 1fr 40mm;
+      gap: 4mm;
+      align-items: center;
+      margin-bottom: 6mm;
+    }
+
+    .logo-box {
+      height: 24mm;
+      border-radius: 8px;
+      background: var(--azul-escuro);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      color: white;
+      font-size: 46px;
+      font-weight: 700;
+    }
+
+    .logo-box img { width: 100%; height: 100%; object-fit: cover; }
+
+    .title h1 {
+      margin: 0;
+      line-height: .94;
+      color: var(--azul-escuro);
+      font-size: 23pt;
+      letter-spacing: .5px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      font-size: 9pt;
+      color: #4b5563;
+      font-weight: 700;
+    }
+
+    .period-box {
+      border: 1px solid var(--linha);
+      border-radius: 2px;
+      padding: 7px;
+      display: grid;
+      grid-template-columns: 26px 1fr;
+      gap: 8px;
+      align-items: center;
+      color: var(--azul-escuro);
+      font-weight: 900;
+      font-size: 11pt;
+      text-transform: uppercase;
+    }
+
+    [contenteditable="true"] {
+      outline: 1px dashed transparent;
+      border-radius: 3px;
+      min-height: 1em;
+    }
+
+    [contenteditable="true"]:focus {
+      outline-color: #86b7fe;
+      background: #fffceb;
+    }
+
+    .weeks-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3mm;
+    }
+
+    .week-card {
+      border: 1px solid var(--linha);
+      border-radius: 10px;
+      padding: 7px 8px;
+      break-inside: avoid;
+      background: white;
+    }
+
+    .week-top {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      align-items: center;
+      gap: 4px;
+      border-bottom: 1px solid var(--linha);
+      padding-bottom: 5px;
+      margin-bottom: 6px;
+    }
+
+    .date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--azul);
+      color: white;
+      padding: 5px 8px;
+      border-radius: 7px;
+      font-size: 14pt;
+      font-weight: 900;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .reading {
+      text-align: right;
+      color: var(--azul-escuro);
+      font-weight: 900;
+      font-size: 11pt;
+      text-transform: uppercase;
+    }
+
+    .visit {
+      color: #148359;
+      font-size: 8pt;
+      font-weight: 800;
+      text-align: right;
+      margin-top: 2px;
+    }
+
+    .row-split {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 3px 0;
+      border-bottom: 1px solid #edf2f7;
+      font-size: 9.2pt;
+    }
+
+    .row-split strong { color: #111827; }
+    .song { color: var(--azul-escuro); font-weight: 800; white-space: nowrap; }
+
+    .intro-line {
+      display: flex;
+      gap: 9px;
+      align-items: center;
+      padding: 5px 0 7px;
+      border-bottom: 1px solid var(--linha);
+      font-size: 9pt;
+      font-weight: 700;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 9px 0 5px;
+      font-size: 11pt;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .section-title.teal { color: var(--verde); }
+    .section-title.gold { color: var(--dourado); }
+    .section-title.red { color: var(--vermelho); }
+
+    .icon {
+      width: 24px;
+      height: 24px;
+      border-radius: 5px;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex: 0 0 auto;
+    }
+
+    .teal .icon { background: var(--verde); }
+    .gold .icon { background: var(--dourado); }
+    .red .icon { background: var(--vermelho); }
+
+    .item {
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      gap: 5px;
+      font-size: 8.8pt;
+      line-height: 1.28;
+      margin: 4px 0;
+    }
+
+    .num {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: white;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8pt;
+      font-weight: 900;
+      margin-top: 1px;
+    }
+
+    .num.teal { background: var(--verde); }
+    .num.gold { background: var(--dourado); }
+    .num.red { background: var(--vermelho); }
+
+    .assignment-title { font-weight: 800; }
+    .person { color: #2f5f91; }
+    .assistant-person { color: #9f2d56; }
+
+    .card-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      margin-top: 8px;
+      border-top: 1px dashed var(--linha);
+      padding-top: 8px;
+    }
+
+    .small-btn {
+      padding: 5px 8px;
+      font-size: 11px;
+      border-radius: 5px;
+    }
+
+    .bottom-image {
+      margin-top: 9mm;
+      border: 1px dashed var(--linha);
+      min-height: 22mm;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #6b7280;
+      overflow: hidden;
+      border-radius: 8px;
+    }
+
+    .bottom-image img { width: 100%; height: auto; display: block; }
+
+    input[type="file"] { display: none; }
+
+    @media print {
+      body { background: white; }
+      .toolbar, .card-actions { display: none !important; }
+      .page { width: auto; min-height: auto; margin: 0; padding: 8mm; box-shadow: none; }
+      [contenteditable="true"] { outline: none !important; background: transparent !important; }
+      .week-card { break-inside: avoid; }
+      @page { size: A4; margin: 8mm; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button onclick="addWeek()">Adicionar semana</button>
+    <button onclick="saveData()">Salvar</button>
+    <button onclick="loadData()" class="secondary">Restaurar</button>
+    <button onclick="clearData()" class="danger">Limpar salvo</button>
+    <button onclick="window.print()">Imprimir / PDF</button>
+    <label class="file-label" for="logoInput">Trocar imagem superior</label>
+    <input id="logoInput" type="file" accept="image/*" onchange="setImage(event, 'logoImage', 'logoPlaceholder')" />
+    <label class="file-label" for="bottomInput">Trocar imagem inferior</label>
+    <input id="bottomInput" type="file" accept="image/*" onchange="setImage(event, 'bottomImage', 'bottomPlaceholder')" />
+  </div>
+
+  <main class="page" id="page">
+    <header class="header">
+      <div class="logo-box">
+        <span id="logoPlaceholder">▧</span>
+        <img id="logoImage" alt="Imagem superior" style="display:none" />
+      </div>
+      <div class="title">
+        <h1 contenteditable="true">Nossa Vida e<br>Ministério Cristão</h1>
+        <div class="subtitle" contenteditable="true">Apostila: Reuniões de 4 de maio a 5 de julho</div>
+      </div>
+      <div class="period-box">
+        <span>📅</span>
+        <div contenteditable="true">16 de junho a<br>5 de julho</div>
+      </div>
+    </header>
+
+    <section class="weeks-grid" id="weeksGrid"></section>
+
+    <div class="bottom-image">
+      <span id="bottomPlaceholder">Imagem inferior opcional</span>
+      <img id="bottomImage" alt="Imagem inferior" style="display:none" />
+    </div>
+  </main>
+
+  <template id="weekTemplate">
+    <article class="week-card">
+      <div class="week-top">
+        <div class="date-pill"><span>📅</span><span contenteditable="true">2 de junho</span></div>
+        <div>
+          <div class="reading" contenteditable="true">Jeremias 1-3</div>
+          <div class="visit" contenteditable="true"></div>
+        </div>
+      </div>
+
+      <div class="row-split">
+        <div><strong>Presidente:</strong> <span class="person" contenteditable="true">Nome do irmão</span></div>
+        <div class="song" contenteditable="true">Cântico 84</div>
+      </div>
+
+      <div class="intro-line">
+        <span contenteditable="true">Cântico e oração</span>
+        <span>|</span>
+        <span contenteditable="true">Comentários iniciais (1 min)</span>
+      </div>
+
+      <div class="section-title teal"><span class="icon">◇</span><span>Tesouros da Palavra de Deus</span></div>
+      <div class="items">
+        <div class="item"><span class="num teal">1</span><div contenteditable="true"><span class="assignment-title">“Não tenha medo...”</span> (10 min) — <span class="person">Designado</span></div></div>
+        <div class="item"><span class="num teal">2</span><div contenteditable="true"><span class="assignment-title">Joias espirituais</span> (10 min) — <span class="person">Designado</span></div></div>
+        <div class="item"><span class="num teal">3</span><div contenteditable="true"><span class="assignment-title">Leitura da Bíblia</span> (4 min) — <span class="person">Designado</span></div></div>
+      </div>
+
+      <div class="section-title gold"><span class="icon">♟</span><span>Faça seu melhor no ministério</span></div>
+      <div class="items ministry-items">
+        <div class="item"><span class="num gold">4</span><div contenteditable="true"><span class="assignment-title">Iniciando conversas</span> (3 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
+        <div class="item"><span class="num gold">5</span><div contenteditable="true"><span class="assignment-title">Cultivando o interesse</span> (4 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
+        <div class="item"><span class="num gold">6</span><div contenteditable="true"><span class="assignment-title">Fazendo discípulos</span> (5 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
+      </div>
+
+      <div class="section-title red"><span class="icon">♥</span><span>Nossa Vida Cristã</span></div>
+      <div class="song" contenteditable="true">Cântico 76</div>
+      <div class="items christian-items">
+        <div class="item"><span class="num red">7</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (6 min) — <span class="person">Designado</span></div></div>
+        <div class="item"><span class="num red">8</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (9 min) — <span class="person">Designado</span></div></div>
+        <div class="item"><span class="num red">9</span><div contenteditable="true"><span class="assignment-title">Estudo bíblico de congregação</span> (30 min) — <span class="person">Designado</span><br>| Leitor: <span class="person">Designado</span></div></div>
+      </div>
+
+      <div class="intro-line" style="border-bottom:0;padding-bottom:0">
+        <span contenteditable="true">Comentários finais (3 min)</span>
+        <span>|</span>
+        <span class="song" contenteditable="true">Cântico 42 e oração</span>
+        <span contenteditable="true">— Designado</span>
+      </div>
+
+      <div class="card-actions">
+        <button class="small-btn secondary" onclick="addItem(this, 'gold')">+ item ministério</button>
+        <button class="small-btn secondary" onclick="addItem(this, 'red')">+ item vida cristã</button>
+        <button class="small-btn danger" onclick="this.closest('.week-card').remove()">Excluir semana</button>
+      </div>
+    </article>
+  </template>
+
+  <script>
+    const STORAGE_KEY = 'programa_nossa_vida_modelo_editavel_v1';
+
+    function addWeek() {
+      const template = document.getElementById('weekTemplate');
+      const clone = template.content.cloneNode(true);
+      document.getElementById('weeksGrid').appendChild(clone);
+      renumberCards();
+    }
+
+    function addItem(button, color) {
+      const card = button.closest('.week-card');
+      const target = color === 'gold' ? card.querySelector('.ministry-items') : card.querySelector('.christian-items');
+      const item = document.createElement('div');
+      item.className = 'item';
+      item.innerHTML = `<span class="num ${color}">0</span><div contenteditable="true"><span class="assignment-title">Nova parte</span> (0 min) — <span class="person">Designado</span></div>`;
+      target.appendChild(item);
+      renumberCards();
+    }
+
+    function renumberCards() {
+      document.querySelectorAll('.week-card').forEach(card => {
+        let n = 1;
+        card.querySelectorAll('.num').forEach(num => num.textContent = n++);
+      });
+    }
+
+    function setImage(event, imgId, placeholderId) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        const img = document.getElementById(imgId);
+        const placeholder = document.getElementById(placeholderId);
+        img.src = e.target.result;
+        img.style.display = 'block';
+        placeholder.style.display = 'none';
+        saveData();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function saveData() {
+      const data = {
+        html: document.getElementById('page').innerHTML,
+        logo: document.getElementById('logoImage').src || '',
+        bottom: document.getElementById('bottomImage').src || ''
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      alert('Salvo neste navegador.');
+    }
+
+    function loadData() {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return alert('Nenhum conteúdo salvo foi encontrado.');
+      const data = JSON.parse(raw);
+      document.getElementById('page').innerHTML = data.html;
+      renumberCards();
+    }
+
+    function clearData() {
+      if (confirm('Deseja apagar o conteúdo salvo neste navegador?')) {
+        localStorage.removeItem(STORAGE_KEY);
+        alert('Conteúdo salvo apagado.');
+      }
+    }
+
+    document.addEventListener('input', () => {
+      clearTimeout(window.autoSaveTimer);
+      window.autoSaveTimer = setTimeout(() => {
+        const data = { html: document.getElementById('page').innerHTML };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }, 700);
+    });
+
+    for (let i = 0; i < 4; i++) addWeek();
+  </script>
+</body>
+</html>

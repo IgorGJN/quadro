@@ -239,12 +239,15 @@
 
     .item {
       display: grid;
-      grid-template-columns: 20px 1fr;
+      grid-template-columns: 20px 1fr auto;
       gap: 5px;
+      align-items: start;
       font-size: 8.8pt;
       line-height: 1.28;
       margin: 4px 0;
     }
+
+    .item > div[contenteditable="true"] { min-width: 0; }
 
     .num {
       width: 16px;
@@ -266,6 +269,22 @@
     .assignment-title { font-weight: 800; }
     .person { color: #2f5f91; }
     .assistant-person { color: #9f2d56; }
+
+    .item-delete {
+      width: 17px;
+      height: 17px;
+      min-width: 17px;
+      padding: 0;
+      border-radius: 50%;
+      background: #a02727;
+      color: white;
+      font-size: 12px;
+      line-height: 17px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 0;
+    }
 
     .card-actions {
       display: flex;
@@ -300,7 +319,8 @@
 
     @media print {
       body { background: white; }
-      .toolbar, .card-actions { display: none !important; }
+      .toolbar, .card-actions, .item-delete { display: none !important; }
+      .item { grid-template-columns: 20px 1fr; }
       .page { width: auto; min-height: auto; margin: 0; padding: 8mm; box-shadow: none; }
       [contenteditable="true"] { outline: none !important; background: transparent !important; }
       .week-card { break-inside: avoid; }
@@ -375,17 +395,17 @@
 
       <div class="section-title gold"><span class="icon">♟</span><span>Faça seu melhor no ministério</span></div>
       <div class="items ministry-items">
-        <div class="item"><span class="num gold">4</span><div contenteditable="true"><span class="assignment-title">Iniciando conversas</span> (3 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
-        <div class="item"><span class="num gold">5</span><div contenteditable="true"><span class="assignment-title">Cultivando o interesse</span> (4 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
-        <div class="item"><span class="num gold">6</span><div contenteditable="true"><span class="assignment-title">Fazendo discípulos</span> (5 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div></div>
+        <div class="item"><span class="num gold">4</span><div contenteditable="true"><span class="assignment-title">Iniciando conversas</span> (3 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
+        <div class="item"><span class="num gold">5</span><div contenteditable="true"><span class="assignment-title">Cultivando o interesse</span> (4 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
+        <div class="item"><span class="num gold">6</span><div contenteditable="true"><span class="assignment-title">Fazendo discípulos</span> (5 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
       </div>
 
       <div class="section-title red"><span class="icon">♥</span><span>Nossa Vida Cristã</span></div>
       <div class="song" contenteditable="true">Cântico 76</div>
       <div class="items christian-items">
-        <div class="item"><span class="num red">7</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (6 min) — <span class="person">Designado</span></div></div>
-        <div class="item"><span class="num red">8</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (9 min) — <span class="person">Designado</span></div></div>
-        <div class="item"><span class="num red">9</span><div contenteditable="true"><span class="assignment-title">Estudo bíblico de congregação</span> (30 min) — <span class="person">Designado</span><br>| Leitor: <span class="person">Designado</span></div></div>
+        <div class="item"><span class="num red">7</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (6 min) — <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
+        <div class="item"><span class="num red">8</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (9 min) — <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
+        <div class="item"><span class="num red">9</span><div contenteditable="true"><span class="assignment-title">Estudo bíblico de congregação</span> (30 min) — <span class="person">Designado</span><br>| Leitor: <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
       </div>
 
       <div class="intro-line" style="border-bottom:0;padding-bottom:0">
@@ -398,6 +418,8 @@
       <div class="card-actions">
         <button class="small-btn secondary" onclick="addItem(this, 'gold')">+ item ministério</button>
         <button class="small-btn secondary" onclick="addItem(this, 'red')">+ item vida cristã</button>
+        <button class="small-btn danger" onclick="deleteLastItem(this, 'gold')">− último ministério</button>
+        <button class="small-btn danger" onclick="deleteLastItem(this, 'red')">− último vida cristã</button>
         <button class="small-btn danger" onclick="this.closest('.week-card').remove()">Excluir semana</button>
       </div>
     </article>
@@ -418,12 +440,54 @@
       const target = color === 'gold' ? card.querySelector('.ministry-items') : card.querySelector('.christian-items');
       const item = document.createElement('div');
       item.className = 'item';
-      item.innerHTML = `<span class="num ${color}">0</span><div contenteditable="true"><span class="assignment-title">Nova parte</span> (0 min) — <span class="person">Designado</span></div>`;
+      item.innerHTML = `<span class="num ${color}">0</span><div contenteditable="true"><span class="assignment-title">Nova parte</span> (0 min) — <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button>`;
       target.appendChild(item);
       renumberCards();
+      autoSave();
+    }
+
+    function deleteItem(button) {
+      const item = button.closest('.item');
+      const card = button.closest('.week-card');
+      if (!item || !card) return;
+      const title = item.querySelector('.assignment-title')?.textContent || 'esta parte';
+      if (confirm(`Excluir ${title}?`)) {
+        item.remove();
+        renumberCards();
+        autoSave();
+      }
+    }
+
+    function deleteLastItem(button, color) {
+      const card = button.closest('.week-card');
+      const target = color === 'gold' ? card.querySelector('.ministry-items') : card.querySelector('.christian-items');
+      const items = target.querySelectorAll('.item');
+      if (!items.length) return alert('Não há partes para excluir nesta seção.');
+      const lastItem = items[items.length - 1];
+      const title = lastItem.querySelector('.assignment-title')?.textContent || 'a última parte';
+      if (confirm(`Excluir ${title}?`)) {
+        lastItem.remove();
+        renumberCards();
+        autoSave();
+      }
+    }
+
+    function ensureDeleteButtons() {
+      document.querySelectorAll('.ministry-items .item, .christian-items .item').forEach(item => {
+        if (!item.querySelector('.item-delete')) {
+          const button = document.createElement('button');
+          button.className = 'item-delete';
+          button.type = 'button';
+          button.title = 'Excluir esta parte';
+          button.textContent = '×';
+          button.onclick = function () { deleteItem(this); };
+          item.appendChild(button);
+        }
+      });
     }
 
     function renumberCards() {
+      ensureDeleteButtons();
       document.querySelectorAll('.week-card').forEach(card => {
         let n = 1;
         card.querySelectorAll('.num').forEach(num => num.textContent = n++);
@@ -455,6 +519,11 @@
       alert('Salvo neste navegador.');
     }
 
+    function autoSave() {
+      const data = { html: document.getElementById('page').innerHTML };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
     function loadData() {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (!raw) return alert('Nenhum conteúdo salvo foi encontrado.');
@@ -472,10 +541,7 @@
 
     document.addEventListener('input', () => {
       clearTimeout(window.autoSaveTimer);
-      window.autoSaveTimer = setTimeout(() => {
-        const data = { html: document.getElementById('page').innerHTML };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-      }, 700);
+      window.autoSaveTimer = setTimeout(autoSave, 700);
     });
 
     for (let i = 0; i < 4; i++) addWeek();

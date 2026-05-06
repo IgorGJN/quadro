@@ -3,8 +3,8 @@
 
   const T = window.Territorios || (window.Territorios = {});
 
-  function uid() {
-    return Math.random().toString(36).slice(2, 10);
+  function uid(prefix) {
+    return (prefix || 'id') + '_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
   }
 
   function clamp(value, min, max) {
@@ -87,6 +87,39 @@
     });
   }
 
+  function projectPointOnSegment(p, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return { x: a.x, y: a.y, t: 0, distance: distance(p, a) };
+    let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2;
+    t = clamp(t, 0, 1);
+    const projected = { x: a.x + t * dx, y: a.y + t * dy, t };
+    projected.distance = distance(p, projected);
+    return projected;
+  }
+
+  function segmentIntersection(a, b, c, d) {
+    const r = { x: b.x - a.x, y: b.y - a.y };
+    const s = { x: d.x - c.x, y: d.y - c.y };
+    const denom = r.x * s.y - r.y * s.x;
+    if (Math.abs(denom) < 1e-9) return null;
+
+    const uNumerator = (c.x - a.x) * r.y - (c.y - a.y) * r.x;
+    const tNumerator = (c.x - a.x) * s.y - (c.y - a.y) * s.x;
+    const t = tNumerator / denom;
+    const u = uNumerator / denom;
+
+    if (t <= 0.001 || t >= 0.999 || u <= 0.001 || u >= 0.999) return null;
+
+    return {
+      x: a.x + t * r.x,
+      y: a.y + t * r.y,
+      t1: t,
+      t2: u
+    };
+  }
+
   T.utils = {
     uid,
     clamp,
@@ -98,6 +131,8 @@
     downloadBlob,
     downloadText,
     readFileAsDataUrl,
-    readFileAsText
+    readFileAsText,
+    projectPointOnSegment,
+    segmentIntersection
   };
 })();

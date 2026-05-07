@@ -1,444 +1,585 @@
-<!DOCTYPE html><html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Programação do Ministério de Campo</title>
+  <title>Saídas e Grupos de Campo</title>
   <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
     :root {
-      --azul: #1f4e79;
-      --azul-escuro: #17324d;
-      --cinza: #f3f6f8;
-      --linha: #d7dee5;
-      --texto: #1f2933;
-    }* {
-  box-sizing: border-box;
-}
+      --jw-blue: #4A6DA7;
+      --jw-blue-dark: #2E4F86;
+      --jw-blue-soft: #EAF0F8;
+      --jw-gray: #64748B;
+      --jw-gray-dark: #1E293B;
+      --jw-border: #D8E0E8;
+      --line: #EEF2F6;
+      --accent: #C58A2B;
+    }
 
-body {
-  margin: 0;
-  font-family: Arial, Helvetica, sans-serif;
-  background: #dde3e8;
-  color: var(--texto);
-}
+    * {
+      box-sizing: border-box;
+    }
 
-.barra-acoes {
-  max-width: 980px;
-  margin: 18px auto 10px;
-  background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 6px 20px rgba(0,0,0,.12);
-  padding: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--jw-gray-dark);
+      background: #EEF2F6;
+    }
 
-button {
-  border: 0;
-  border-radius: 9px;
-  padding: 9px 14px;
-  font-weight: 700;
-  cursor: pointer;
-  background: var(--azul);
-  color: white;
-}
+    body {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-button.secundario {
-  background: #e8eef3;
-  color: var(--azul-escuro);
-}
+    .toolbar {
+      max-width: 210mm;
+      margin: 16px auto;
+      padding: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      background: #FFFFFF;
+      border: 1px solid var(--jw-border);
+      border-radius: 14px;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+    }
 
-button.perigo {
-  background: #b42318;
-}
+    .toolbar button {
+      border: 0;
+      border-radius: 999px;
+      padding: 10px 15px;
+      color: #FFFFFF;
+      background: var(--jw-blue-dark);
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
 
-.pagina {
-  max-width: 980px;
-  min-height: 1380px;
-  margin: 0 auto 30px;
-  background: white;
-  padding: 34px;
-  box-shadow: 0 12px 35px rgba(0,0,0,.18);
-}
+    .toolbar button.secondary {
+      color: var(--jw-blue-dark);
+      background: var(--jw-blue-soft);
+    }
 
-.cabecalho {
-  background: linear-gradient(135deg, var(--azul), var(--azul-escuro));
-  color: white;
-  border-radius: 18px;
-  padding: 28px 24px;
-  text-align: center;
-  margin-bottom: 26px;
-}
+    .page {
+      width: 210mm;
+      height: 297mm;
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+      background: #FFFFFF;
+      margin: 16px auto;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+    }
 
-.cabecalho h1 {
-  margin: 0;
-  font-size: 32px;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-}
+    .content {
+      position: absolute;
+      top: 12mm;
+      right: 12mm;
+      bottom: 16mm;
+      left: 12mm;
+      display: flex;
+      flex-direction: column;
+      gap: 4mm;
+    }
 
-.cabecalho p {
-  margin: 8px 0 0;
-  font-size: 15px;
-  opacity: .9;
-}
+    .footer {
+      position: absolute;
+      left: 12mm;
+      right: 12mm;
+      bottom: 7mm;
+      font-size: 12px;
+      color: #64748B;
+      border-top: 1px solid #D8E0E8;
+      padding-top: 3mm;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8mm;
+    }
 
-.cartao {
-  border: 1px solid var(--linha);
-  border-radius: 18px;
-  overflow: hidden;
-  margin-bottom: 26px;
-  background: #fff;
-}
+    img {
+      max-width: 100%;
+      height: auto;
+      object-fit: cover;
+      display: block;
+    }
 
-.titulo-secao {
-  background: var(--cinza);
-  border-bottom: 1px solid var(--linha);
-  padding: 16px;
-  text-align: center;
-  font-size: 24px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--azul-escuro);
-}
+    .hero-image {
+      width: 100%;
+      height: 32mm;
+      object-fit: cover;
+      border-radius: 14px;
+    }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
+    .hero {
+      position: relative;
+      overflow: hidden;
+      border-radius: 18px;
+      background: var(--jw-blue-soft);
+      flex: 0 0 32mm;
+    }
 
-th {
-  background: #edf3f8;
-  color: var(--azul-escuro);
-  text-transform: uppercase;
-  font-size: 15px;
-  padding: 13px 8px;
-  border-bottom: 1px solid var(--linha);
-}
+    .hero::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(46, 79, 134, 0.88), rgba(46, 79, 134, 0.58), rgba(46, 79, 134, 0.06));
+      pointer-events: none;
+    }
 
-td {
-  padding: 0;
-  border-bottom: 1px dashed #aeb8c2;
-  border-right: 1px solid var(--linha);
-  text-align: center;
-  font-size: 20px;
-}
+    .hero-title {
+      position: absolute;
+      left: 9mm;
+      top: 6mm;
+      z-index: 2;
+      color: #FFFFFF;
+    }
 
-td:last-child,
-th:last-child {
-  border-right: 0;
-}
+    .eyebrow {
+      margin: 0 0 2mm;
+      font-size: 14px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #DCE8F7;
+    }
 
-tr:last-child td {
-  border-bottom: 0;
-}
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1.02;
+      letter-spacing: -0.02em;
+    }
 
-input {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: center;
-  font-size: 20px;
-  padding: 11px 8px;
-  outline: none;
-  color: var(--texto);
-}
+    .subtitle {
+      margin: 2mm 0 0;
+      font-size: 12px;
+      color: #EEF6FF;
+      font-weight: 700;
+    }
 
-input:focus {
-  background: #fff8d8;
-}
+    .top-row {
+      display: block;
+    }
 
-.horario input {
-  font-weight: 700;
-  color: var(--azul);
-}
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 2.5mm;
+      margin: 0 0 2.4mm;
+      color: var(--jw-blue-dark);
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: -0.01em;
+    }
 
-.grupo-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-}
+    .section-title::before {
+      content: "";
+      width: 3mm;
+      height: 9mm;
+      border-radius: 999px;
+      background: var(--accent);
+      flex: 0 0 auto;
+    }
 
-.grupo {
-  border-right: 1px solid var(--linha);
-}
+    .schedule-card,
+    .group-card,
+    .summary-card,
+    .notice-card {
+      border: 1px solid var(--jw-border);
+      border-radius: 14px;
+      background: #FFFFFF;
+      overflow: hidden;
+    }
 
-.grupo:last-child {
-  border-right: 0;
-}
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
 
-.grupo h3 {
-  margin: 0;
-  background: var(--azul-escuro);
-  color: white;
-  text-align: center;
-  padding: 13px;
-  font-size: 20px;
-  text-transform: uppercase;
-}
+    th {
+      background: var(--jw-blue-dark);
+      color: #FFFFFF;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      font-size: 14px;
+      padding: 2.55mm 2.3mm;
+      text-align: left;
+    }
 
-.pessoa {
-  display: flex;
-  border-bottom: 1px dashed #aeb8c2;
-}
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 2.25mm 2.3mm;
+      font-size: 14px;
+      line-height: 1.08;
+      vertical-align: middle;
+    }
 
-.pessoa:last-child {
-  border-bottom: 0;
-}
+    tbody tr:nth-child(even) td {
+      background: #F8FAFC;
+    }
 
-.pessoa input {
-  flex: 1;
-}
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
 
-.botao-excluir {
-  width: 34px;
-  padding: 0;
-  border-radius: 0;
-  background: #fee2e2;
-  color: #991b1b;
-}
+    .day {
+      font-weight: 800;
+      color: var(--jw-blue-dark);
+    }
 
-.rodape {
-  text-align: center;
-  color: #6b7280;
-  font-size: 13px;
-  margin-top: 18px;
-}
+    .time {
+      display: inline-block;
+      min-width: 16mm;
+      text-align: center;
+      border-radius: 999px;
+      padding: 1.2mm 1.8mm;
+      background: var(--jw-blue-soft);
+      color: var(--jw-blue-dark);
+      font-weight: 800;
+    }
 
-@media (max-width: 720px) {
-  .pagina {
-    padding: 14px;
-  }
+    .notice-card {
+      padding: 4mm;
+      background: linear-gradient(180deg, #FFFFFF, #F8FAFC);
+    }
 
-  .cabecalho h1 {
-    font-size: 23px;
-  }
+    .notice-title {
+      margin: 0 0 2mm;
+      color: var(--jw-blue-dark);
+      font-size: 16px;
+      line-height: 1.1;
+    }
 
-  th,
-  td,
-  input {
-    font-size: 14px;
-  }
+    .notice-text {
+      margin: 0;
+      color: var(--jw-gray);
+      font-size: 12.5px;
+      line-height: 1.35;
+    }
 
-  th {
-    padding: 10px 4px;
-  }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3mm;
+      margin-top: 3mm;
+    }
 
-  input {
-    padding: 9px 4px;
-  }
+    .summary-card {
+      padding: 3mm;
+      min-width: 0;
+    }
 
-  .grupo-grid {
-    grid-template-columns: 1fr;
-  }
+    .summary-label {
+      margin: 0 0 1mm;
+      color: var(--jw-gray);
+      font-size: 9.6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
 
-  .grupo {
-    border-right: 0;
-    border-bottom: 1px solid var(--linha);
-  }
-}
+    .summary-value {
+      margin: 0;
+      color: var(--jw-blue-dark);
+      font-size: 18px;
+      font-weight: 900;
+      line-height: 1;
+    }
 
-@media print {
-  body {
-    background: white;
-  }
+    .groups-section {
+      flex: 1 1 auto;
+      min-height: 0;
+    }
 
-  .barra-acoes {
-    display: none;
-  }
+    .groups-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4mm;
+      align-items: start;
+    }
 
-  .pagina {
-    max-width: none;
-    min-height: auto;
-    margin: 0;
-    padding: 16px;
-    box-shadow: none;
-  }
+    .group-card {
+      padding: 0;
+    }
 
-  .cabecalho {
-    background: white !important;
-    color: black;
-    border: 2px solid black;
-    border-radius: 0;
-    padding: 18px;
-  }
+    .group-header {
+      padding: 3mm 3.5mm;
+      background: var(--jw-blue-dark);
+      color: #FFFFFF;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 3mm;
+    }
 
-  .cabecalho p,
-  .rodape,
-  .botao-excluir {
-    display: none;
-  }
+    .group-header h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      text-transform: uppercase;
+    }
 
-  .cartao {
-    border: 2px solid black;
-    border-radius: 0;
-  }
+    .group-count {
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 999px;
+      padding: 1.1mm 2mm;
+      font-size: 9.5px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
 
-  .titulo-secao,
-  th,
-  .grupo h3 {
-    background: white !important;
-    color: black;
-  }
+    .names-list {
+      list-style: none;
+      margin: 0;
+      padding: 2mm 3.5mm 2.5mm;
+    }
 
-  td, th {
-    border-color: black;
-  }
+    .names-list li {
+      display: flex;
+      align-items: center;
+      min-height: 6.25mm;
+      border-bottom: 1px solid var(--line);
+      font-size: 13.3px;
+      line-height: 1.05;
+    }
 
-  input {
-    border: 0;
-    padding: 7px 4px;
-  }
-}
+    .names-list li:last-child {
+      border-bottom: 0;
+    }
 
+    .names-list li::before {
+      content: "";
+      width: 1.7mm;
+      height: 1.7mm;
+      margin-right: 2.2mm;
+      border-radius: 50%;
+      background: var(--accent);
+      flex: 0 0 auto;
+    }
+
+    .sg {
+      font-weight: 900;
+      color: var(--jw-blue-dark);
+    }
+
+    .edit-hint {
+      margin: 0;
+      color: var(--jw-gray);
+      font-size: 11.5px;
+      line-height: 1.25;
+    }
+
+    [contenteditable="true"] {
+      outline: 0;
+    }
+
+    [contenteditable="true"]:focus {
+      box-shadow: 0 0 0 2px rgba(74, 109, 167, 0.25);
+      border-radius: 4px;
+    }
+
+    @media print {
+      html,
+      body {
+        width: 210mm;
+        background: #FFFFFF;
+      }
+
+      .toolbar {
+        display: none;
+      }
+
+      .page {
+        margin: 0;
+        box-shadow: none;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="barra-acoes">
-    <button onclick="adicionarProgramacao()">+ Programação</button>
-    <button onclick="adicionarPessoa('centro')">+ Grupo Centro</button>
-    <button onclick="adicionarPessoa('norte')">+ Grupo Norte</button>
-    <button class="secundario" onclick="salvar()">Salvar</button>
-    <button class="secundario" onclick="restaurar()">Restaurar</button>
-    <button onclick="window.print()">Imprimir / PDF</button>
-  </div>  <main class="pagina">
-    <header class="cabecalho">
-      <h1>Programação do Ministério de Campo</h1>
-      <p>Edite os campos, salve no navegador e imprima em PDF.</p>
-    </header><section class="cartao">
-  <div class="titulo-secao">Saídas de Campo</div>
-  <table>
-    <thead>
-      <tr>
-        <th>Dia da Semana</th>
-        <th>Local de Saída</th>
-        <th>Horário</th>
-        <th>Dirigente</th>
-        <th class="acao">Excluir</th>
-      </tr>
-    </thead>
-    <tbody id="tabela-programacao"></tbody>
-  </table>
-</section>
-
-<section class="cartao">
-  <div class="titulo-secao">Grupos de Campo</div>
-  <div class="grupo-grid">
-    <div class="grupo">
-      <h3>Grupo Centro</h3>
-      <div id="grupo-centro"></div>
-    </div>
-    <div class="grupo">
-      <h3>Grupo Norte</h3>
-      <div id="grupo-norte"></div>
-    </div>
+  <div class="toolbar">
+    <button type="button" onclick="window.print()">Imprimir / salvar PDF</button>
+    <button type="button" class="secondary" onclick="salvarDados()">Salvar alterações</button>
+    <button type="button" class="secondary" onclick="restaurarDados()">Restaurar alterações</button>
+    <button type="button" class="secondary" onclick="limparDados()">Limpar salvos</button>
   </div>
-</section>
 
-<div class="rodape">Programação organizada para uso impresso ou digital</div>
+  <section class="page">
+    <div class="content">
+      <header class="hero">
+        <img
+          class="hero-image"
+          src="https://cms-imgp.jw-cdn.org/img/p/202016252/univ/art/202016252_univ_lsr_lg.jpg"
+          alt="Testemunhas de Jeová pregando"
+        />
+        <div class="hero-title">
+          <p class="eyebrow" contenteditable="true">Serviço de Campo</p>
+          <h1 contenteditable="true">Saídas e Grupos de Campo</h1>
+         
+        </div>
+      </header>
 
-  </main>  <script>
-    let programacao = [
-      ['Quarta', 'Sueli', '07h45', 'Gisleno'],
-      ['Quarta', 'Adelmo', '17h00', 'Simon'],
-      ['Quinta', 'Zoom', '08h15', 'Gisleno'],
-      ['Sexta', 'Salão do Reino', '07h45', 'Igor'],
-      ['Sexta', 'José', '17h00', 'José'],
-      ['Sábado', 'Salão do Reino', '07h45', 'José'],
-      ['Domingo', 'Salão do Reino', '08h15', 'Gisleno'],
-      ['Domingo', 'Adelmo', '08h15', 'Igor']
-    ];
+      <main class="top-row">
+        <section>
+          <h2 class="section-title" contenteditable="true">Saídas de Campo</h2>
+          <div class="schedule-card">
+            <table aria-label="Programação das saídas de campo">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">Dia</th>
+                  <th style="width: 38%;">Local</th>
+                  <th style="width: 18%;">Horário</th>
+                  <th style="width: 24%;">Dirigente</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="day" contenteditable="true">Quarta</td>
+                  <td contenteditable="true">Sueli</td>
+                  <td contenteditable="true"><span class="time">07h45</span></td>
+                  <td contenteditable="true">Gisleno</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Quarta</td>
+                  <td contenteditable="true">Adelmo</td>
+                  <td contenteditable="true"><span class="time">17h00</span></td>
+                  <td contenteditable="true">Simon</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Quinta</td>
+                  <td contenteditable="true">Zoom</td>
+                  <td contenteditable="true"><span class="time">08h15</span></td>
+                  <td contenteditable="true">Gisleno</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Sexta</td>
+                  <td contenteditable="true">Salão do Reino</td>
+                  <td contenteditable="true"><span class="time">07h45</span></td>
+                  <td contenteditable="true">Igor</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Sexta</td>
+                  <td contenteditable="true">José</td>
+                  <td contenteditable="true"><span class="time">17h00</span></td>
+                  <td contenteditable="true">José</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Sábado</td>
+                  <td contenteditable="true">Salão do Reino</td>
+                  <td contenteditable="true"><span class="time">07h45</span></td>
+                  <td contenteditable="true">José</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Domingo</td>
+                  <td contenteditable="true">Salão do Reino</td>
+                  <td contenteditable="true"><span class="time">08h15</span></td>
+                  <td contenteditable="true">Gisleno</td>
+                </tr>
+                <tr>
+                  <td class="day" contenteditable="true">Domingo</td>
+                  <td contenteditable="true">Adelmo</td>
+                  <td contenteditable="true"><span class="time">08h15</span></td>
+                  <td contenteditable="true">Igor</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
 
-    let grupos = {
-      centro: ['Gisleno Pinheiro (SG)', 'Morlânia Pinheiro', 'José Bezerra', 'Suenir Nascimento', 'Lara Silva', 'Gabriel Albuquerque', 'Miraneide Augusto', 'Mosirene Lima', 'Francisco Sales', 'Célia Nogueira', 'João Carneiro', 'Francilene Carneiro', 'Olimpio Ferreira', 'Lúcia Silva'],
-      norte: ['Igor Gabriel (SG)', 'Tatiana Fernandes', 'Adelmo Martins', 'Evirlane Martins', 'Rebeca Martins', 'Sueli Barbosa', 'Simon Marinho', 'Jardênia Peixoto', 'Antônia Pereira', 'Alexsander Freitas', 'Sineide Marinho', 'Marizete Pereira', 'Tainara']
-    };
+      <section class="groups-section">
+        <h2 class="section-title" contenteditable="true">Grupos de Campo</h2>
 
-    function renderizar() {
-      const tabela = document.getElementById('tabela-programacao');
-      tabela.innerHTML = '';
+        <div class="groups-layout">
+          <article class="group-card">
+            <div class="group-header">
+              <h2 contenteditable="true">Grupo Centro</h2>
+              <span class="group-count" contenteditable="true">14</span>
+            </div>
+            <ul class="names-list">
+              <li contenteditable="true"><span class="sg">Gisleno Pinheiro (SG)</span></li>
+              <li contenteditable="true">Morlânia Pinheiro</li>
+              <li contenteditable="true">José Bezerra</li>
+              <li contenteditable="true">Suenir Nascimento</li>
+              <li contenteditable="true">Lara Silva</li>
+              <li contenteditable="true">Gabriel Albuquerque</li>
+              <li contenteditable="true">Miraneide Augusto</li>
+              <li contenteditable="true">Mosirene Lima</li>
+              <li contenteditable="true">Francisco Sales</li>
+              <li contenteditable="true">Célia Nogueira</li>
+              <li contenteditable="true">João Carneiro</li>
+              <li contenteditable="true">Francilene Carneiro</li>
+              <li contenteditable="true">Olimpio Ferreira</li>
+              <li contenteditable="true">Lúcia Silva</li>
+            </ul>
+          </article>
 
-      programacao.forEach((linha, i) => {
-        const tr = document.createElement('tr');
-        linha.forEach((valor, j) => {
-          const td = document.createElement('td');
-          if (j === 2) td.className = 'horario';
-          const input = document.createElement('input');
-          input.value = valor;
-          input.oninput = () => programacao[i][j] = input.value;
-          td.appendChild(input);
-          tr.appendChild(td);
-        });
+          <article class="group-card">
+            <div class="group-header">
+              <h2 contenteditable="true">Grupo Norte</h2>
+              <span class="group-count" contenteditable="true">13</span>
+            </div>
+            <ul class="names-list">
+              <li contenteditable="true"><span class="sg">Igor Gabriel (SG)</span></li>
+              <li contenteditable="true">Tatiana Fernandes</li>
+              <li contenteditable="true">Adelmo Martins</li>
+              <li contenteditable="true">Evirlane Martins</li>
+              <li contenteditable="true">Rebeca Martins</li>
+              <li contenteditable="true">Sueli Barbosa</li>
+              <li contenteditable="true">Simon Marinho</li>
+              <li contenteditable="true">Jardênia Peixoto</li>
+              <li contenteditable="true">Antônia Pereira</li>
+              <li contenteditable="true">Alexsander Freitas</li>
+              <li contenteditable="true">Sineide Marinho</li>
+              <li contenteditable="true">Marizete Pereira</li>
+              <li contenteditable="true">Tainara</li>
+            </ul>
+          </article>
+        </div>
+      </section>
+    </div>
 
-        const tdAcao = document.createElement('td');
-        const btn = document.createElement('button');
-        btn.textContent = '×';
-        btn.className = 'botao-excluir';
-        btn.onclick = () => {
-          programacao.splice(i, 1);
-          renderizar();
-        };
-        tdAcao.appendChild(btn);
-        tr.appendChild(tdAcao);
-        tabela.appendChild(tr);
-      });
+    <footer class="footer">
+      <span contenteditable="true">Congregação — Serviço de Campo</span>
+      <span contenteditable="true">Página única</span>
+    </footer>
+  </section>
 
-      renderizarGrupo('centro');
-      renderizarGrupo('norte');
+  <script>
+    const storageKey = "saidasDeCampoA4JW";
+
+    function salvarDados() {
+      localStorage.setItem(storageKey, document.body.innerHTML);
+      alert("Alterações salvas neste navegador.");
     }
 
-    function renderizarGrupo(nome) {
-      const caixa = document.getElementById('grupo-' + nome);
-      caixa.innerHTML = '';
-      grupos[nome].forEach((pessoa, i) => {
-        const div = document.createElement('div');
-        div.className = 'pessoa';
-
-        const input = document.createElement('input');
-        input.value = pessoa;
-        input.oninput = () => grupos[nome][i] = input.value;
-
-        const btn = document.createElement('button');
-        btn.textContent = '×';
-        btn.className = 'botao-excluir';
-        btn.onclick = () => {
-          grupos[nome].splice(i, 1);
-          renderizar();
-        };
-
-        div.appendChild(input);
-        div.appendChild(btn);
-        caixa.appendChild(div);
-      });
-    }
-
-    function adicionarProgramacao() {
-      programacao.push(['', '', '', '']);
-      renderizar();
-    }
-
-    function adicionarPessoa(grupo) {
-      grupos[grupo].push('');
-      renderizar();
-    }
-
-    function salvar() {
-      localStorage.setItem('programacao-ministerio-campo', JSON.stringify({ programacao, grupos }));
-      alert('Salvo neste navegador.');
-    }
-
-    function restaurar() {
-      const dados = localStorage.getItem('programacao-ministerio-campo');
-      if (!dados) {
-        alert('Nada salvo ainda.');
+    function restaurarDados() {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        alert("Nenhuma alteração salva encontrada.");
         return;
       }
-      const restaurado = JSON.parse(dados);
-      programacao = restaurado.programacao || programacao;
-      grupos = restaurado.grupos || grupos;
-      renderizar();
+      document.body.innerHTML = saved;
     }
 
-    renderizar();
-  </script></body>
+    function limparDados() {
+      localStorage.removeItem(storageKey);
+      alert("Dados salvos removidos. Recarregue a página para voltar ao modelo original.");
+    }
+  </script>
+</body>
 </html>

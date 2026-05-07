@@ -16,10 +16,31 @@
 
   function resizeCanvas() {
     if (!canvas || !wrap) return;
+
+    const stage = document.getElementById('mapStage');
+    const panel = document.getElementById('canvasPanel');
+    if (stage && panel) {
+      const panelRect = panel.getBoundingClientRect();
+      const padding = window.innerWidth <= 980 ? 16 : 28;
+      const ratio = 14 / 5.8;
+      let maxW = Math.max(260, panelRect.width - padding);
+      let maxH = Math.max(160, panelRect.height - padding);
+      let width = maxW;
+      let height = width / ratio;
+
+      if (height > maxH) {
+        height = maxH;
+        width = height * ratio;
+      }
+
+      stage.style.width = Math.floor(width) + 'px';
+      stage.style.height = Math.floor(height) + 'px';
+    }
+
     const rect = wrap.getBoundingClientRect();
     const dpr = window.devicePixelRatio || 1;
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
+    canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     draw();
   }
@@ -51,16 +72,14 @@
     const rect = wrap.getBoundingClientRect();
 
     ctx.clearRect(0, 0, rect.width, rect.height);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(0, 0, rect.width, rect.height);
 
     ctx.save();
     ctx.translate(state.offsetX, state.offsetY);
     ctx.scale(state.scale, state.scale);
 
-    if (state.image) ctx.drawImage(state.image, 0, 0);
-    else {
-      ctx.fillStyle = '#e5e7eb';
-      ctx.fillRect(0, 0, rect.width, rect.height);
-    }
+    if (state.image && state.settings.mapVisible !== false) ctx.drawImage(state.image, 0, 0);
 
     drawSceneObjects(ctx, true);
 
@@ -114,9 +133,6 @@
     ctx.strokeStyle = state.snapPreview.type === 'segment' ? '#16a34a' : '#2563eb';
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = '12px Arial';
-    ctx.fillStyle = '#111827';
-    ctx.fillText(state.snapPreview.type === 'segment' ? 'criar nó' : 'encaixar nó', p.x + 12, p.y - 10);
     ctx.restore();
   }
 
@@ -328,7 +344,7 @@
     c.save();
     c.fillStyle = utils.hexToRgba(obj.color || '#ffffff', obj.opacity ?? 0.55);
 
-    if (shape === 'circle') {
+    if (shape === 'circle' || shape === 'ellipse') {
       c.beginPath();
       c.rect(0, 0, fullW, fullH);
       c.ellipse(x + w / 2, y + h / 2, Math.max(1, w / 2), Math.max(1, h / 2), 0, 0, Math.PI * 2, true);

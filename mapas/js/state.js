@@ -41,13 +41,63 @@
       snapDistance: 22,
       autoSave: false,
       showNodes: true,
-      nodeLabels: true
+      nodeLabels: true,
+      mapVisible: true,
+      mapLocked: false,
+      defaultStyles: {}
     },
 
     historyPast: [],
     historyFuture: [],
     maxHistory: 120
   };
+
+
+  const styleKeysByType = {
+    road: ['color', 'borderColor', 'borderWidth', 'size', 'rounded', 'smooth'],
+    text: ['color', 'borderColor', 'borderWidth', 'size', 'rotation'],
+    point: ['icon', 'color', 'borderColor', 'borderWidth', 'size', 'rotation'],
+    area: ['color', 'borderColor', 'borderWidth', 'size', 'opacity', 'rounded', 'smooth'],
+    focus: ['color', 'borderColor', 'borderWidth', 'size', 'opacity', 'rotation', 'shape'],
+    compass: ['color', 'borderColor', 'borderWidth', 'size', 'rotation'],
+    legend: ['name', 'color', 'backgroundColor', 'borderColor', 'borderWidth', 'size', 'opacity']
+  };
+
+  const baseDefaultsByType = {
+    road: { color: '#2563eb', borderColor: '#ffffff', borderWidth: 0, size: 8, rounded: true, smooth: false },
+    text: { color: '#111827', borderColor: '#ffffff', borderWidth: 4, size: 18, rotation: 0 },
+    point: { icon: '●', color: '#dc2626', borderColor: '#ffffff', borderWidth: 0, size: 24, rotation: 0 },
+    area: { color: '#facc15', borderColor: '#111827', borderWidth: 3, size: 16, opacity: 0.25, rounded: true, smooth: false },
+    focus: { color: '#ffffff', borderColor: '#111827', borderWidth: 4, size: 16, opacity: 0.55, rotation: 0, shape: 'rect' },
+    compass: { color: '#111827', borderColor: '#ffffff', borderWidth: 3, size: 60, rotation: 0 },
+    legend: { name: 'Legenda\n● Ponto de referência\n— Rua\n▣ Área de foco', color: '#111827', backgroundColor: '#ffffff', borderColor: '#111827', borderWidth: 2, size: 16, opacity: 0.12 }
+  };
+
+  function normalizeSettings(settings) {
+    const merged = Object.assign({}, state.settings, settings || {});
+    merged.mapVisible = merged.mapVisible !== false;
+    merged.mapLocked = !!merged.mapLocked;
+    merged.defaultStyles = Object.assign({}, merged.defaultStyles || {});
+    Object.keys(merged.defaultStyles).forEach(function (type) {
+      merged.defaultStyles[type] = Object.assign({}, merged.defaultStyles[type] || {});
+    });
+    return merged;
+  }
+
+  function defaultStyle(type) {
+    return Object.assign({}, baseDefaultsByType[type] || {}, (state.settings.defaultStyles && state.settings.defaultStyles[type]) || {});
+  }
+
+  function rememberStyle(obj) {
+    if (!obj || !obj.type) return;
+    const keys = styleKeysByType[obj.type] || [];
+    if (!state.settings.defaultStyles) state.settings.defaultStyles = {};
+    const current = Object.assign({}, state.settings.defaultStyles[obj.type] || {});
+    keys.forEach(function (key) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) current[key] = utils.clone(obj[key]);
+    });
+    state.settings.defaultStyles[obj.type] = current;
+  }
 
   function snapshot() {
     return {
@@ -68,7 +118,7 @@
     state.nodes = snapshotValue.nodes || [];
     state.selectedId = snapshotValue.selectedId || null;
     state.selectedPoint = snapshotValue.selectedPoint || null;
-    state.settings = Object.assign({}, state.settings, snapshotValue.settings || {});
+    state.settings = normalizeSettings(snapshotValue.settings);
   }
 
   function pushHistory() {
@@ -420,7 +470,7 @@
 
   function currentProject() {
     return {
-      version: 4,
+      version: 5,
       projectName: state.projectName || 'mapa-territorio',
       imageData: state.imageData,
       objects: state.objects,
@@ -435,7 +485,7 @@
     state.imageData = project.imageData || null;
     state.nodes = project.nodes || [];
     state.objects = (project.objects || []).map(normalizeObject);
-    state.settings = Object.assign({}, state.settings, project.settings || {});
+    state.settings = normalizeSettings(project.settings);
     state.selectedId = null;
     state.selectedPoint = null;
     state.drawingRoad = [];
@@ -484,6 +534,8 @@
     removeSelectedPoint,
     splitSelectedRoad,
     moveObject,
+    defaultStyle,
+    rememberStyle,
     cleanupUnusedNodes,
     currentProject,
     loadProject

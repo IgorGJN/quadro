@@ -11,7 +11,7 @@
     const canvas = document.getElementById('mapCanvas');
     const wrap = document.getElementById('canvasWrap');
     T.drawing.setup(canvas, wrap);
-    bindCanvas(canvas);
+    if (canvas) bindCanvas(canvas);
     bindToolbar();
     bindProjectActions();
     T.ui.bindPropertyInputs();
@@ -22,49 +22,76 @@
     T.drawing.resizeCanvas();
   }
 
+  function on(el, eventName, handler, options) {
+    if (!el || !el.addEventListener) return;
+    el.addEventListener(eventName, handler, options);
+  }
+
   function bindToolbar() {
     document.querySelectorAll('[data-tool]').forEach(function (button) {
-      button.addEventListener('click', function () {
+      on(button, 'click', function () {
         T.ui.setTool(button.dataset.tool);
       });
     });
 
-    T.ui.els.finishRoadBtn.addEventListener('click', finishRoad);
-    T.ui.els.finishAreaBtn.addEventListener('click', finishArea);
-    T.ui.els.cancelDrawingBtn.addEventListener('click', cancelDrawing);
+    on(T.ui.els.finishRoadBtn, 'click', finishRoad);
+    on(T.ui.els.finishAreaBtn, 'click', finishArea);
+    on(T.ui.els.cancelDrawingBtn, 'click', cancelDrawing);
 
-    T.ui.els.deleteBtn.addEventListener('click', function () { T.store.deleteSelected(); refreshAfterChange(); });
-    T.ui.els.duplicateBtn.addEventListener('click', function () { T.store.duplicateSelected(); refreshAfterChange(); });
-    T.ui.els.bringForwardBtn.addEventListener('click', function () { T.store.bringForward(); refreshAfterChange(); });
-    T.ui.els.sendBackwardBtn.addEventListener('click', function () { T.store.sendBackward(); refreshAfterChange(); });
+    on(T.ui.els.deleteBtn, 'click', function () { T.store.deleteSelected(); refreshAfterChange(); T.storage.autoSave(); });
+    on(T.ui.els.duplicateBtn, 'click', function () { T.store.duplicateSelected(); refreshAfterChange(); T.storage.autoSave(); });
+    on(T.ui.els.bringForwardBtn, 'click', function () { T.store.bringForward(); refreshAfterChange(); T.storage.autoSave(); });
+    on(T.ui.els.sendBackwardBtn, 'click', function () { T.store.sendBackward(); refreshAfterChange(); T.storage.autoSave(); });
 
-    T.ui.els.removePointBtn.addEventListener('click', function () {
-      if (T.store.removeSelectedPoint()) refreshAfterChange();
+    on(T.ui.els.toggleVisibleBtn, 'click', function () {
+      const obj = T.store.selectedObject();
+      if (!obj) return;
+      T.store.toggleVisibility(obj.id);
+      refreshAfterChange();
+      T.storage.autoSave();
     });
 
-    T.ui.els.splitRoadBtn.addEventListener('click', function () {
-      if (T.store.splitSelectedRoad()) refreshAfterChange();
+    on(T.ui.els.toggleLockBtn, 'click', function () {
+      const obj = T.store.selectedObject();
+      if (!obj) return;
+      T.store.toggleLock(obj.id);
+      refreshAfterChange();
+      T.storage.autoSave();
     });
 
-    T.ui.els.createIntersectionsBtn.addEventListener('click', function () {
+    on(T.ui.els.removePointBtn, 'click', function () {
+      if (T.store.removeSelectedPoint()) { refreshAfterChange(); T.storage.autoSave(); }
+    });
+
+    on(T.ui.els.splitRoadBtn, 'click', function () {
+      if (T.store.splitSelectedRoad()) { refreshAfterChange(); T.storage.autoSave(); }
+    });
+
+    on(T.ui.els.createIntersectionsBtn, 'click', function () {
       const count = T.drawing.createRealIntersections();
       refreshAfterChange();
+      T.storage.autoSave();
       alert(count ? count + ' interseção(ões) real(is) criada(s).' : 'Nenhuma interseção nova encontrada.');
     });
 
-    T.ui.els.centerFocusBtn.addEventListener('click', function () {
+    on(T.ui.els.centerFocusBtn, 'click', function () {
       const obj = T.store.selectedObject();
       if (!obj || obj.type !== 'focus') return;
       centerOnObject(obj);
     });
 
-    T.ui.els.undoBtn.addEventListener('click', function () {
+    on(T.ui.els.undoBtn, 'click', function () {
       if (T.store.undo()) reloadImageIfNeeded(false).then(refreshAfterChange);
     });
-    T.ui.els.redoBtn.addEventListener('click', function () {
+    on(T.ui.els.redoBtn, 'click', function () {
       if (T.store.redo()) reloadImageIfNeeded(false).then(refreshAfterChange);
     });
-    T.ui.els.fitMapBtn.addEventListener('click', function () { T.drawing.fitImage(); T.drawing.draw(); });
+    on(T.ui.els.fitMapBtn, 'click', fitMap);
+    on(T.ui.els.zoomInBtn, 'click', function () { zoomAtCenter(1.18); });
+    on(T.ui.els.zoomOutBtn, 'click', function () { zoomAtCenter(0.84); });
+    on(T.ui.els.toggleUiBtn, 'click', toggleCleanMode);
+
+    bindMobileTabs();
   }
 
   function bindProjectActions() {
@@ -174,6 +201,7 @@
 
     canvas.addEventListener('wheel', function (event) {
       event.preventDefault();
+      if (T.state.settings.mapLocked) return;
       const point = canvasPoint(event);
       const factor = event.deltaY < 0 ? 1.1 : 0.9;
       zoomAt(point.x, point.y, T.state.scale * factor);
@@ -185,7 +213,7 @@
     const state = T.state;
 
     if (event.touches && event.touches.length === 2) {
-      startPinch(event);
+      if (!state.settings.mapLocked) startPinch(event);
       return;
     }
 
@@ -201,6 +229,7 @@
     if (state.tool === 'legend') return addLegend(world);
     if (state.tool === 'connect') return handleConnect(world);
     if (state.tool === 'edit') return handleEditDown(world, p);
+    if (state.tool === 'pan') return startPan(p);
 
     handleSelectDown(world, p);
   }
@@ -298,7 +327,7 @@
   function finishRoad() {
     if (T.state.drawingRoad.length < 2) return;
     const points = T.state.drawingRoad.map(function (p) { return T.store.makePoint(p.x, p.y, p.nodeId || null); });
-    T.store.addObject({ type: 'road', points: points, name: '', color: '#2563eb', borderColor: '#ffffff', borderWidth: 0, size: 8, rounded: true, smooth: false });
+    T.store.addObject(Object.assign({ type: 'road', points: points, name: '' }, T.store.defaultStyle('road'), { points: points }));
     T.state.drawingRoad = [];
     T.state.snapPreview = null;
     afterNewObject();
@@ -307,7 +336,7 @@
   function finishArea() {
     if (T.state.drawingArea.length < 3) return;
     const points = T.state.drawingArea.map(function (p) { return T.store.makePoint(p.x, p.y, p.nodeId || null); });
-    T.store.addObject({ type: 'area', points: points, name: 'Área', color: '#facc15', borderColor: '#111827', borderWidth: 3, size: 16, opacity: 0.25, rounded: true, smooth: false });
+    T.store.addObject(Object.assign({ type: 'area', points: points, name: 'Área' }, T.store.defaultStyle('area'), { points: points }));
     T.state.drawingArea = [];
     T.state.snapPreview = null;
     afterNewObject();
@@ -325,7 +354,7 @@
 
   function startFocus(world, screenPoint) {
     T.store.pushHistory();
-    T.state.drawingFocus = { type: 'focus', x: world.x, y: world.y, w: 0, h: 0, name: 'Área de foco', color: '#ffffff', borderColor: '#111827', borderWidth: 4, size: 16, opacity: 0.55, rotation: 0, shape: 'rect' };
+    T.state.drawingFocus = Object.assign({ type: 'focus', x: world.x, y: world.y, w: 0, h: 0, name: 'Área de foco' }, T.store.defaultStyle('focus'));
     T.state.drag.active = true;
     T.state.drag.mode = 'focus-draw';
     T.state.drag.lastX = screenPoint.x;
@@ -335,22 +364,22 @@
   }
 
   function addText(world) {
-    T.store.addObject({ type: 'text', x: world.x, y: world.y, name: 'Nome ou número', color: '#111827', borderColor: '#ffffff', borderWidth: 4, size: 18, rotation: 0 });
+    T.store.addObject(Object.assign({ type: 'text', x: world.x, y: world.y, name: 'Nome ou número' }, T.store.defaultStyle('text')));
     afterNewObject();
   }
 
   function addPoint(world) {
-    T.store.addObject({ type: 'point', x: world.x, y: world.y, name: 'Referência', icon: '●', color: '#dc2626', borderColor: '#ffffff', borderWidth: 0, size: 24, rotation: 0 });
+    T.store.addObject(Object.assign({ type: 'point', x: world.x, y: world.y, name: 'Referência' }, T.store.defaultStyle('point')));
     afterNewObject();
   }
 
   function addCompass(world) {
-    T.store.addObject({ type: 'compass', x: world.x, y: world.y, name: '', color: '#111827', borderColor: '#ffffff', borderWidth: 3, size: 60, rotation: 0 });
+    T.store.addObject(Object.assign({ type: 'compass', x: world.x, y: world.y, name: '' }, T.store.defaultStyle('compass')));
     afterNewObject();
   }
 
   function addLegend(world) {
-    T.store.addObject({ type: 'legend', x: world.x, y: world.y, name: 'Legenda\n● Ponto de referência\n— Rua\n▣ Área de foco', color: '#111827', backgroundColor: '#ffffff', borderColor: '#111827', borderWidth: 2, size: 16, opacity: 0.12 });
+    T.store.addObject(Object.assign({ type: 'legend', x: world.x, y: world.y }, T.store.defaultStyle('legend')));
     afterNewObject();
   }
 
@@ -411,6 +440,18 @@
     handleSelectDown(world, screenPoint);
   }
 
+
+  function startPan(screenPoint) {
+    if (T.state.settings.mapLocked) return;
+    T.store.selectObject(null);
+    T.state.drag.active = true;
+    T.state.drag.mode = 'pan';
+    T.state.drag.lastX = screenPoint.x;
+    T.state.drag.lastY = screenPoint.y;
+    T.ui.refreshAll();
+    T.drawing.draw();
+  }
+
   function handleSelectDown(world, screenPoint) {
     const pointHit = T.drawing.hitObjectPoint(world.x, world.y, T.state.selectedId);
     if (pointHit && pointHit.nodeId) {
@@ -434,8 +475,10 @@
       T.state.drag.mode = 'object';
     } else {
       T.store.selectObject(null);
-      T.state.drag.active = true;
-      T.state.drag.mode = 'pan';
+      if (!T.state.settings.mapLocked) {
+        T.state.drag.active = true;
+        T.state.drag.mode = 'pan';
+      }
     }
     T.state.drag.lastX = screenPoint.x;
     T.state.drag.lastY = screenPoint.y;
@@ -465,15 +508,55 @@
     T.drawing.draw();
   }
 
+
+  function fitMap() {
+    if (T.state.settings.mapLocked) return;
+    T.drawing.fitImage();
+    T.drawing.draw();
+  }
+
+  function zoomAtCenter(factor) {
+    const wrap = document.getElementById('canvasWrap');
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    zoomAt(rect.width / 2, rect.height / 2, T.state.scale * factor);
+  }
+
+  function toggleCleanMode() {
+    document.body.classList.toggle('presentation-mode');
+    if (T.ui.els.toggleUiBtn) {
+      T.ui.els.toggleUiBtn.textContent = document.body.classList.contains('presentation-mode') ? 'Mostrar painéis' : 'Modo limpo';
+    }
+    setTimeout(function () {
+      T.drawing.resizeCanvas();
+      T.drawing.draw();
+    }, 0);
+  }
+
+  function bindMobileTabs() {
+    document.querySelectorAll('[data-mobile-panel]').forEach(function (button) {
+      on(button, 'click', function () {
+        const panel = button.dataset.mobilePanel || 'create';
+        document.body.classList.remove('mobile-create', 'mobile-edit', 'mobile-layers', 'mobile-project');
+        document.body.classList.add('mobile-' + panel);
+        document.querySelectorAll('[data-mobile-panel]').forEach(function (item) {
+          item.classList.toggle('active', item === button);
+        });
+        setTimeout(T.drawing.resizeCanvas, 0);
+      });
+    });
+  }
+
   function canvasPoint(event) {
     const canvas = document.getElementById('mapCanvas');
     const rect = canvas.getBoundingClientRect();
-    const source = event.touches ? event.touches[0] : event;
+    const source = event.touches && event.touches.length ? event.touches[0] : event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : event;
     return { x: source.clientX - rect.left, y: source.clientY - rect.top };
   }
 
   function zoomAt(sx, sy, newScale) {
     const state = T.state;
+    if (state.settings.mapLocked) return;
     newScale = utils.clamp(newScale, 0.1, 10);
     const before = T.drawing.screenToWorld(sx, sy);
     state.scale = newScale;
@@ -485,6 +568,7 @@
 
   function startPinch(event) {
     const state = T.state;
+    if (state.settings.mapLocked) return;
     state.drag.mode = 'pinch';
     state.drag.pinchStartDistance = touchDistance(event.touches[0], event.touches[1]);
     state.drag.pinchStartScale = state.scale;
@@ -493,6 +577,7 @@
 
   function movePinch(event) {
     const state = T.state;
+    if (state.settings.mapLocked) return;
     const canvas = document.getElementById('mapCanvas');
     const rect = canvas.getBoundingClientRect();
     const dist = touchDistance(event.touches[0], event.touches[1]);

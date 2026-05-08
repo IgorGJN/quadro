@@ -59,8 +59,87 @@
       'mapLockedInput', 'toggleVisibleBtn', 'toggleLockBtn'
     ].forEach(function (id) { els[id] = document.getElementById(id); });
     enhanceNumberControls();
-    if (els.objectList) els.objectList.addEventListener('click', handleLayerListClick);
+    bindLayerListEvents();
+
+    // Ferramentas de diagnóstico disponíveis no console do navegador.
+    // Use: Territorios.debugLayers() ou Territorios.testLayerButtons()
+    T.layerCommand = runLayerCommandFromInline;
+    T.debugLayers = debugLayers;
+    T.testLayerButtons = testLayerButtons;
   }
+
+  let lastLayerCommandKey = '';
+  let lastLayerCommandTime = 0;
+
+  function bindLayerListEvents() {
+    if (!els.objectList || els.objectList.__territoriosLayerEventsBound) return;
+    els.objectList.__territoriosLayerEventsBound = true;
+
+    // Capture=true faz os botões da lista serem tratados antes do clique do cartão.
+    els.objectList.addEventListener('click', handleLayerListClick, true);
+    els.objectList.addEventListener('pointerup', handleLayerListPointerUp, true);
+    els.objectList.addEventListener('keydown', handleLayerListKeydown, true);
+  }
+
+  function stopLayerEvent(event) {
+    if (!event) return;
+    if (event.preventDefault) event.preventDefault();
+    if (event.stopPropagation) event.stopPropagation();
+    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
+  }
+
+  function getEventElement(event) {
+    const target = event && event.target;
+    if (!target) return null;
+    return target.nodeType === 1 ? target : target.parentElement;
+  }
+
+  function isDuplicateLayerCommand(action, objectId) {
+    const key = action + ':' + (objectId || 'mapa');
+    const now = Date.now();
+    if (lastLayerCommandKey === key && now - lastLayerCommandTime < 400) return true;
+    lastLayerCommandKey = key;
+    lastLayerCommandTime = now;
+    return false;
+  }
+
+  function runLayerCommand(action, objectId, event, source) {
+    stopLayerEvent(event);
+
+    if (!action) {
+      console.warn('[Territórios][camadas] Botão sem data-layer-action.', { source: source || 'desconhecido', event: event });
+      return false;
+    }
+
+    if (isDuplicateLayerCommand(action, objectId)) return false;
+
+    const before = action.indexOf('object-') === 0 && objectId ? T.store.objectById(objectId) : null;
+    console.debug('[Territórios][camadas] ação recebida', {
+      action: action,
+      objectId: objectId || null,
+      source: source || 'lista',
+      antes: before ? { visible: before.visible !== false, locked: !!before.locked, selected: T.state.selectedId === before.id } : null
+    });
+
+    const ok = performLayerAction(action, objectId || null);
+
+    const after = action.indexOf('object-') === 0 && objectId ? T.store.objectById(objectId) : null;
+    console.debug('[Territórios][camadas] ação finalizada', {
+      ok: ok,
+      action: action,
+      objectId: objectId || null,
+      depois: after ? { visible: after.visible !== false, locked: !!after.locked, selected: T.state.selectedId === after.id } : null
+    });
+
+    if (!ok) console.warn('[Territórios][camadas] Ação não executada.', { action: action, objectId: objectId || null });
+    return false;
+  }
+
+  function runLayerCommandFromInline(event, button) {
+    if (!button) return false;
+    return runLayerCommand(button.dataset.layerAction, button.dataset.objectId || null, event, 'inline');
+  }
+
 
   function hasEl(name) { return !!els[name]; }
 
@@ -271,65 +350,226 @@
     }
   }
 
-  function handleLayerListClick(event) {
+  function stopLayerButtonEvent(event) {
+    if (!event) return;
+    event.stopPropagation();
+  }
+
+  function refreshAfterLayerAction(objectId) {
+    if (objectId) T.store.selectObject(objectId);
+    refreshProperties();
+    refreshLayerList();
+    updateDrawingButtons();
+    updateUndoRedoButtons();
+    updatePointButtons();
+    updateFloatingHelp();
+    T.drawing.draw();
+    T.storage.autoSave();
+  }
+
+  function performLayerAction(action, objectId) {
+    if (action === 'object-visible' && objectId) {
+      T.store.toggleVisibility(objectId);
+      refreshAfterLayerAction(objectId);
+      return true;
+    }
+
+    if (action === 'object-lock' && objectId) {
+      T.store.toggleLock(objectId);
+      refreshAfterLayerAction(objectId);
+      return true;
+    }
+
+    if (action === 'map-visible') {
+      T.state.settings.mapVisible = !(T.state.settings.mapVisible !== false);
+      refreshAll();
+      T.drawing.draw();
+      T.storage.autoSave();
+      return true;
+    }
+
+    if (action === 'map-lock') {
+      T.state.settings.mapLocked = !T.state.settings.mapLocked;
+      if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
+      refreshAll();
+      T.drawing.draw();
+      T.storage.autoSave();
+      return true;
+    }
+
+    return false;
+  }
+
+  function makeLayerButton(text, title, action, objectId) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'layer-control-btn';
+    button.textContent = text;
+    button.title = title || text;
+    button.dataset.layerAction = action;
+    button.dataset.objectId = objectId || '';
+    button.setAttribute('aria-label', title || text);
+
+    // Três caminhos de acionamento para cobrir mouse, toque e navegadores que
+    // tratam botões dentro de cartões de forma diferente.
+    button.addEventListener('click', function (event) {
+      runLayerCommand(action, objectId || null, event, 'direct-click');
+    });
+
+    button.addEventListener('pointerup', function (event) {
+      if (event.pointerType && event.pointerType !== 'mouse') {
+        runLayerCommand(action, objectId || null, event, 'direct-pointerup');
+      }
+    });
+
+    button.onclick = function (event) {
+      return runLayerCommand(action, objectId || null, event, 'onclick-property');
+    };
+
+    return button;
+  }
+
+  function selectLayerFromList(objectId, event) {
+    if (event) stopLayerEvent(event);
+    if (!objectId) return;
+    const obj = T.store.objectById(objectId);
+    if (!obj) {
+      console.warn('[Territórios][camadas] Tentativa de selecionar camada inexistente.', objectId);
+      return;
+    }
+    T.store.selectObject(objectId);
+    refreshProperties();
+    refreshLayerList();
+    updateDrawingButtons();
+    updateUndoRedoButtons();
+    updatePointButtons();
+    updateFloatingHelp();
+    T.drawing.draw();
+    console.debug('[Territórios][camadas] camada selecionada pela lista', {
+      objectId: objectId,
+      visible: obj.visible !== false,
+      locked: !!obj.locked
+    });
+  }
+
+  function handleLayerListPointerUp(event) {
+    // Em telas de toque, alguns navegadores geram pointerup de forma mais confiável
+    // do que click em botões pequenos dentro de elementos roláveis.
+    if (!event.pointerType || event.pointerType === 'mouse') return;
+    handleLayerListClick(event, 'delegated-pointerup');
+  }
+
+  function handleLayerListClick(event, source) {
     if (!els.objectList) return;
-    const target = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
+    const target = getEventElement(event);
     if (!target) return;
 
-    const actionButton = target.closest('[data-layer-action]');
+    const actionButton = target.closest('button[data-layer-action], [data-layer-action]');
     if (actionButton && els.objectList.contains(actionButton)) {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const action = actionButton.dataset.layerAction;
-      const objectId = actionButton.dataset.objectId;
-
-      if (action === 'object-visible' && objectId) {
-        T.store.toggleVisibility(objectId);
-        T.store.selectObject(objectId);
-        refreshProperties();
-        refreshLayerList();
-        T.drawing.draw();
-        T.storage.autoSave();
-        return;
-      }
-
-      if (action === 'object-lock' && objectId) {
-        T.store.toggleLock(objectId);
-        T.store.selectObject(objectId);
-        refreshProperties();
-        refreshLayerList();
-        T.drawing.draw();
-        T.storage.autoSave();
-        return;
-      }
-
-      if (action === 'map-visible') {
-        T.state.settings.mapVisible = T.state.settings.mapVisible === false;
-        refreshAll();
-        T.drawing.draw();
-        T.storage.autoSave();
-        return;
-      }
-
-      if (action === 'map-lock') {
-        T.state.settings.mapLocked = !T.state.settings.mapLocked;
-        if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
-        refreshAll();
-        T.drawing.draw();
-        T.storage.autoSave();
-      }
-
+      runLayerCommand(actionButton.dataset.layerAction, actionButton.dataset.objectId || null, event, source || 'delegated-click');
       return;
     }
 
     const item = target.closest('.layer-item[data-object-id]');
     if (!item || !els.objectList.contains(item)) return;
+    selectLayerFromList(item.dataset.objectId, event);
+  }
 
-    T.store.selectObject(item.dataset.objectId);
-    refreshProperties();
-    refreshLayerList();
-    T.drawing.draw();
+  function handleLayerListKeydown(event) {
+    if (!els.objectList || (event.key !== 'Enter' && event.key !== ' ')) return;
+    const target = getEventElement(event);
+    if (!target) return;
+
+    const actionButton = target.closest('button[data-layer-action], [data-layer-action]');
+    if (actionButton && els.objectList.contains(actionButton)) {
+      runLayerCommand(actionButton.dataset.layerAction, actionButton.dataset.objectId || null, event, 'delegated-keydown');
+      return;
+    }
+
+    const item = target.closest('.layer-item[data-object-id]');
+    if (!item || !els.objectList.contains(item)) return;
+    selectLayerFromList(item.dataset.objectId, event);
+  }
+
+  function debugLayers() {
+    const items = els.objectList ? Array.from(els.objectList.querySelectorAll('.layer-item[data-object-id]')) : [];
+    const report = {
+      versao: 6,
+      objectListExiste: !!els.objectList,
+      totalObjetos: T.state.objects.length,
+      selectedId: T.state.selectedId,
+      objetos: T.state.objects.map(function (obj) {
+        return {
+          id: obj.id,
+          type: obj.type,
+          name: obj.name || defaultLayerName(obj),
+          visible: obj.visible !== false,
+          locked: !!obj.locked,
+          selected: obj.id === T.state.selectedId
+        };
+      }),
+      itensNaLista: items.map(function (item) {
+        return {
+          id: item.dataset.objectId,
+          text: item.innerText,
+          botoes: Array.from(item.querySelectorAll('[data-layer-action]')).map(function (button) {
+            return {
+              texto: button.textContent,
+              action: button.dataset.layerAction,
+              objectId: button.dataset.objectId || null,
+              disabled: !!button.disabled
+            };
+          })
+        };
+      })
+    };
+    console.table(report.objetos);
+    console.log('[Territórios][camadas] diagnóstico completo:', report);
+    return report;
+  }
+
+  function testLayerButtons() {
+    if (!T.state.objects.length) {
+      console.warn('[Territórios][camadas][teste] Crie uma rua ou outro item antes de rodar o teste.');
+      return null;
+    }
+
+    const obj = T.state.objects[0];
+    const original = { visible: obj.visible, locked: obj.locked, selectedId: T.state.selectedId };
+    const id = obj.id;
+    const steps = [];
+
+    function snap(label) {
+      const current = T.store.objectById(id);
+      steps.push({
+        passo: label,
+        visible: current ? current.visible !== false : null,
+        locked: current ? !!current.locked : null,
+        selected: T.state.selectedId === id,
+        existeNaLista: !!(els.objectList && els.objectList.querySelector('.layer-item[data-object-id="' + id + '"]'))
+      });
+    }
+
+    console.group('[Territórios][camadas][teste] teste automático dos botões');
+    snap('início');
+    performLayerAction('object-visible', id); snap('após ocultar/mostrar 1');
+    performLayerAction('object-visible', id); snap('após ocultar/mostrar 2');
+    performLayerAction('object-lock', id); snap('após bloquear/desbloquear 1');
+    performLayerAction('object-lock', id); snap('após bloquear/desbloquear 2');
+    selectLayerFromList(id); snap('após selecionar pela lista');
+
+    const restored = T.store.objectById(id);
+    if (restored) {
+      restored.visible = original.visible;
+      restored.locked = original.locked;
+    }
+    T.state.selectedId = original.selectedId;
+    refreshAll();
+    snap('estado restaurado');
+
+    console.table(steps);
+    console.groupEnd();
+    return steps;
   }
 
   function refreshLayerList() {
@@ -360,16 +600,59 @@
         const div = document.createElement('div');
         div.className = 'layer-item' + (obj.id === T.state.selectedId ? ' selected' : '') + (obj.locked ? ' locked' : '') + (obj.visible === false ? ' hidden-layer' : '');
         div.dataset.objectId = obj.id;
+        div.tabIndex = 0;
+        div.setAttribute('role', 'button');
+        div.setAttribute('aria-label', 'Selecionar camada ' + (obj.name || defaultLayerName(obj)));
+
         const nodes = obj.points ? obj.points.filter(function (p) { return p.nodeId && T.store.connectedCount(p.nodeId) > 1; }).length : 0;
         const label = obj.name || defaultLayerName(obj);
-        const status = [
-          obj.visible === false ? '<span class="state-pill is-hidden">oculta</span>' : '<span class="state-pill">visível</span>',
-          obj.locked ? '<span class="state-pill locked">bloqueada</span>' : '<span class="state-pill">livre</span>'
-        ].join('');
-        const visibilityText = obj.visible === false ? '👁 Mostrar' : '🙈 Ocultar';
-        const lockText = obj.locked ? '🔓 Desbloquear' : '🔒 Bloquear';
 
-        div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>' + utils.escapeHtml(label) + '</strong><small>' + (typeLabels[obj.type] || obj.type) + (nodes ? ' · <span class="node-badge">' + nodes + ' junção(ões)</span>' : '') + '</small><div class="layer-state">' + status + '</div></div><div class="layer-actions"><button type="button" title="Mostrar/ocultar" data-layer-action="object-visible" data-object-id="' + utils.escapeHtml(obj.id) + '">' + visibilityText + '</button><button type="button" title="Bloquear/desbloquear" data-layer-action="object-lock" data-object-id="' + utils.escapeHtml(obj.id) + '">' + lockText + '</button></div></div>';
+        const head = document.createElement('div');
+        head.className = 'layer-head';
+
+        const title = document.createElement('div');
+        title.className = 'layer-title';
+
+        const strong = document.createElement('strong');
+        strong.textContent = label;
+        title.appendChild(strong);
+
+        const small = document.createElement('small');
+        small.innerHTML = (typeLabels[obj.type] || obj.type) + (nodes ? ' · <span class="node-badge">' + nodes + ' junção(ões)</span>' : '');
+        title.appendChild(small);
+
+        const stateLine = document.createElement('div');
+        stateLine.className = 'layer-state';
+
+        const visiblePill = document.createElement('span');
+        visiblePill.className = 'state-pill' + (obj.visible === false ? ' is-hidden' : '');
+        visiblePill.textContent = obj.visible === false ? 'oculta' : 'visível';
+        stateLine.appendChild(visiblePill);
+
+        const lockPill = document.createElement('span');
+        lockPill.className = 'state-pill' + (obj.locked ? ' locked' : '');
+        lockPill.textContent = obj.locked ? 'bloqueada' : 'livre';
+        stateLine.appendChild(lockPill);
+        title.appendChild(stateLine);
+
+        const actions = document.createElement('div');
+        actions.className = 'layer-actions';
+        actions.appendChild(makeLayerButton(obj.visible === false ? 'Mostrar' : 'Ocultar', 'Mostrar ou ocultar camada', 'object-visible', obj.id));
+        actions.appendChild(makeLayerButton(obj.locked ? 'Desbloquear' : 'Bloquear', 'Bloquear ou desbloquear camada', 'object-lock', obj.id));
+
+        head.appendChild(title);
+        head.appendChild(actions);
+        div.appendChild(head);
+
+        div.addEventListener('click', function (event) {
+          if (event.target.closest('[data-layer-action]')) return;
+          selectLayerFromList(obj.id, event);
+        });
+        div.addEventListener('keydown', function (event) {
+          if (event.key === 'Enter' || event.key === ' ') {
+            selectLayerFromList(obj.id, event);
+          }
+        });
 
         els.objectList.appendChild(div);
       });
@@ -386,10 +669,43 @@
     const locked = !!T.state.settings.mapLocked;
     const div = document.createElement('div');
     div.className = 'layer-item map-base-layer' + (!visible ? ' hidden-layer' : '') + (locked ? ' locked' : '');
-    const visibleText = visible ? '🙈 Ocultar' : '👁 Mostrar';
-    const lockText = locked ? '🔓 Desbloquear' : '🔒 Bloquear';
-    div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>Imagem do mapa</strong><small>' + (T.state.image ? 'Mapa carregado' : 'Nenhum mapa carregado') + '</small><div class="layer-state"><span class="state-pill ' + (visible ? '' : 'is-hidden') + '">' + (visible ? 'visível' : 'oculto') + '</span><span class="state-pill ' + (locked ? 'locked' : '') + '">' + (locked ? 'bloqueado' : 'livre') + '</span></div></div><div class="layer-actions"><button type="button" title="Exibir/ocultar mapa" data-layer-action="map-visible">' + visibleText + '</button><button type="button" title="Bloquear/desbloquear mapa" data-layer-action="map-lock">' + lockText + '</button></div></div>';
 
+    const head = document.createElement('div');
+    head.className = 'layer-head';
+
+    const title = document.createElement('div');
+    title.className = 'layer-title';
+
+    const strong = document.createElement('strong');
+    strong.textContent = 'Imagem do mapa';
+    title.appendChild(strong);
+
+    const small = document.createElement('small');
+    small.textContent = T.state.image ? 'Mapa carregado' : 'Nenhum mapa carregado';
+    title.appendChild(small);
+
+    const stateLine = document.createElement('div');
+    stateLine.className = 'layer-state';
+
+    const visiblePill = document.createElement('span');
+    visiblePill.className = 'state-pill' + (visible ? '' : ' is-hidden');
+    visiblePill.textContent = visible ? 'visível' : 'oculto';
+    stateLine.appendChild(visiblePill);
+
+    const lockPill = document.createElement('span');
+    lockPill.className = 'state-pill' + (locked ? ' locked' : '');
+    lockPill.textContent = locked ? 'bloqueado' : 'livre';
+    stateLine.appendChild(lockPill);
+    title.appendChild(stateLine);
+
+    const actions = document.createElement('div');
+    actions.className = 'layer-actions';
+    actions.appendChild(makeLayerButton(visible ? 'Ocultar mapa' : 'Mostrar mapa', 'Exibir ou ocultar mapa base', 'map-visible'));
+    actions.appendChild(makeLayerButton(locked ? 'Desbloquear mapa' : 'Bloquear mapa', 'Bloquear ou desbloquear movimento/zoom do mapa', 'map-lock'));
+
+    head.appendChild(title);
+    head.appendChild(actions);
+    div.appendChild(head);
     els.objectList.appendChild(div);
   }
 
@@ -523,5 +839,5 @@
     });
   }
 
-  T.ui = { setup, els, setTool, refreshAll, refreshProperties, refreshLayerList, refreshLocalProjects, refreshVersions, updateDrawingButtons, updateUndoRedoButtons, updatePointButtons, updateFloatingHelp, bindPropertyInputs, bindSettingsInputs, defaultLayerName, updateMapButtons };
+  T.ui = { setup, els, setTool, refreshAll, refreshProperties, refreshLayerList, refreshLocalProjects, refreshVersions, updateDrawingButtons, updateUndoRedoButtons, updatePointButtons, updateFloatingHelp, bindPropertyInputs, bindSettingsInputs, defaultLayerName, updateMapButtons, runLayerCommandFromInline, debugLayers, testLayerButtons };
 })();

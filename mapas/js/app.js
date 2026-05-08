@@ -470,14 +470,22 @@
     const hit = T.drawing.hitTest(world.x, world.y);
     if (hit) {
       T.store.selectObject(hit.id);
-      T.store.pushHistory();
-      T.state.drag.active = true;
-      T.state.drag.mode = 'object';
+      if (!hit.locked) {
+        T.store.pushHistory();
+        T.state.drag.active = true;
+        T.state.drag.mode = 'object';
+      } else {
+        T.state.drag.active = false;
+        T.state.drag.mode = null;
+      }
     } else {
       T.store.selectObject(null);
       if (!T.state.settings.mapLocked) {
         T.state.drag.active = true;
         T.state.drag.mode = 'pan';
+      } else {
+        T.state.drag.active = false;
+        T.state.drag.mode = null;
       }
     }
     T.state.drag.lastX = screenPoint.x;

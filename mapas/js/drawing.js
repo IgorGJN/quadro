@@ -538,7 +538,7 @@
     const objects = T.state.objects;
     for (let i = objects.length - 1; i >= 0; i -= 1) {
       const obj = objects[i];
-      if (obj.visible === false || obj.locked) continue;
+      if (obj.visible === false) continue;
       const box = getObjectBox(obj);
       if (x >= box.x && x <= box.x + box.w && y >= box.y && y <= box.y + box.h) return obj;
     }

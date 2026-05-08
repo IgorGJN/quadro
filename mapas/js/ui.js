@@ -59,6 +59,7 @@
       'mapLockedInput', 'toggleVisibleBtn', 'toggleLockBtn'
     ].forEach(function (id) { els[id] = document.getElementById(id); });
     enhanceNumberControls();
+    if (els.objectList) els.objectList.addEventListener('click', handleLayerListClick);
   }
 
   function hasEl(name) { return !!els[name]; }
@@ -158,20 +159,20 @@
       return;
     }
 
-    els.nameInput.value = obj.name || '';
-    els.colorInput.value = obj.color || '#2563eb';
-    els.backgroundColorInput.value = obj.backgroundColor || '#ffffff';
-    els.borderColorInput.value = obj.borderColor || '#ffffff';
-    els.sizeInput.value = obj.size || 16;
-    els.borderWidthInput.value = obj.borderWidth || 0;
-    els.opacityInput.value = obj.opacity ?? 0.45;
-    els.rotationInput.value = obj.rotation || 0;
-    els.shapeInput.value = obj.shape === 'circle' ? 'ellipse' : obj.shape || 'rect';
-    els.iconInput.value = obj.icon || '●';
-    els.roundedInput.checked = obj.rounded !== false;
-    els.smoothInput.checked = !!obj.smooth;
-    els.visibleInput.checked = obj.visible !== false;
-    els.lockedInput.checked = !!obj.locked;
+    if (els.nameInput) els.nameInput.value = obj.name || '';
+    if (els.colorInput) els.colorInput.value = obj.color || '#2563eb';
+    if (els.backgroundColorInput) els.backgroundColorInput.value = obj.backgroundColor || '#ffffff';
+    if (els.borderColorInput) els.borderColorInput.value = obj.borderColor || '#ffffff';
+    if (els.sizeInput) els.sizeInput.value = obj.size || 16;
+    if (els.borderWidthInput) els.borderWidthInput.value = obj.borderWidth || 0;
+    if (els.opacityInput) els.opacityInput.value = obj.opacity ?? 0.45;
+    if (els.rotationInput) els.rotationInput.value = obj.rotation || 0;
+    if (els.shapeInput) els.shapeInput.value = obj.shape === 'circle' ? 'ellipse' : obj.shape || 'rect';
+    if (els.iconInput) els.iconInput.value = obj.icon || '●';
+    if (els.roundedInput) els.roundedInput.checked = obj.rounded !== false;
+    if (els.smoothInput) els.smoothInput.checked = !!obj.smooth;
+    if (els.visibleInput) els.visibleInput.checked = obj.visible !== false;
+    if (els.lockedInput) els.lockedInput.checked = !!obj.locked;
 
     configureLabels(obj.type);
     showRelevantFields(obj.type);
@@ -270,6 +271,67 @@
     }
   }
 
+  function handleLayerListClick(event) {
+    if (!els.objectList) return;
+    const target = event.target && event.target.nodeType === 1 ? event.target : event.target && event.target.parentElement;
+    if (!target) return;
+
+    const actionButton = target.closest('[data-layer-action]');
+    if (actionButton && els.objectList.contains(actionButton)) {
+      event.preventDefault();
+      event.stopPropagation();
+
+      const action = actionButton.dataset.layerAction;
+      const objectId = actionButton.dataset.objectId;
+
+      if (action === 'object-visible' && objectId) {
+        T.store.toggleVisibility(objectId);
+        T.store.selectObject(objectId);
+        refreshProperties();
+        refreshLayerList();
+        T.drawing.draw();
+        T.storage.autoSave();
+        return;
+      }
+
+      if (action === 'object-lock' && objectId) {
+        T.store.toggleLock(objectId);
+        T.store.selectObject(objectId);
+        refreshProperties();
+        refreshLayerList();
+        T.drawing.draw();
+        T.storage.autoSave();
+        return;
+      }
+
+      if (action === 'map-visible') {
+        T.state.settings.mapVisible = T.state.settings.mapVisible === false;
+        refreshAll();
+        T.drawing.draw();
+        T.storage.autoSave();
+        return;
+      }
+
+      if (action === 'map-lock') {
+        T.state.settings.mapLocked = !T.state.settings.mapLocked;
+        if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
+        refreshAll();
+        T.drawing.draw();
+        T.storage.autoSave();
+      }
+
+      return;
+    }
+
+    const item = target.closest('.layer-item[data-object-id]');
+    if (!item || !els.objectList.contains(item)) return;
+
+    T.store.selectObject(item.dataset.objectId);
+    refreshProperties();
+    refreshLayerList();
+    T.drawing.draw();
+  }
+
   function refreshLayerList() {
     if (!els.objectList) return;
     els.objectList.innerHTML = '';
@@ -297,40 +359,17 @@
       groups[type].slice().reverse().forEach(function (obj) {
         const div = document.createElement('div');
         div.className = 'layer-item' + (obj.id === T.state.selectedId ? ' selected' : '') + (obj.locked ? ' locked' : '') + (obj.visible === false ? ' hidden-layer' : '');
+        div.dataset.objectId = obj.id;
         const nodes = obj.points ? obj.points.filter(function (p) { return p.nodeId && T.store.connectedCount(p.nodeId) > 1; }).length : 0;
         const label = obj.name || defaultLayerName(obj);
         const status = [
           obj.visible === false ? '<span class="state-pill is-hidden">oculta</span>' : '<span class="state-pill">visível</span>',
           obj.locked ? '<span class="state-pill locked">bloqueada</span>' : '<span class="state-pill">livre</span>'
         ].join('');
+        const visibilityText = obj.visible === false ? '👁 Mostrar' : '🙈 Ocultar';
+        const lockText = obj.locked ? '🔓 Desbloquear' : '🔒 Bloquear';
 
-        div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>' + utils.escapeHtml(label) + '</strong><small>' + (typeLabels[obj.type] || obj.type) + (nodes ? ' · <span class="node-badge">' + nodes + ' junção(ões)</span>' : '') + '</small><div class="layer-state">' + status + '</div></div><div class="layer-actions"><button type="button" title="Mostrar/ocultar" data-action="visible">' + (obj.visible === false ? '🙈' : '👁') + '</button><button type="button" title="Bloquear/desbloquear" data-action="lock">' + (obj.locked ? '🔒' : '🔓') + '</button></div></div>';
-
-        div.addEventListener('click', function () {
-          T.store.selectObject(obj.id);
-          refreshProperties();
-          refreshLayerList();
-          T.drawing.draw();
-        });
-
-        div.querySelector('[data-action="visible"]').addEventListener('click', function (event) {
-          event.stopPropagation();
-          T.store.toggleVisibility(obj.id);
-          T.store.selectObject(obj.id);
-          refreshProperties();
-          refreshLayerList();
-          T.drawing.draw();
-          T.storage.autoSave();
-        });
-        div.querySelector('[data-action="lock"]').addEventListener('click', function (event) {
-          event.stopPropagation();
-          T.store.toggleLock(obj.id);
-          T.store.selectObject(obj.id);
-          refreshProperties();
-          refreshLayerList();
-          T.drawing.draw();
-          T.storage.autoSave();
-        });
+        div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>' + utils.escapeHtml(label) + '</strong><small>' + (typeLabels[obj.type] || obj.type) + (nodes ? ' · <span class="node-badge">' + nodes + ' junção(ões)</span>' : '') + '</small><div class="layer-state">' + status + '</div></div><div class="layer-actions"><button type="button" title="Mostrar/ocultar" data-layer-action="object-visible" data-object-id="' + utils.escapeHtml(obj.id) + '">' + visibilityText + '</button><button type="button" title="Bloquear/desbloquear" data-layer-action="object-lock" data-object-id="' + utils.escapeHtml(obj.id) + '">' + lockText + '</button></div></div>';
 
         els.objectList.appendChild(div);
       });
@@ -347,23 +386,9 @@
     const locked = !!T.state.settings.mapLocked;
     const div = document.createElement('div');
     div.className = 'layer-item map-base-layer' + (!visible ? ' hidden-layer' : '') + (locked ? ' locked' : '');
-    div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>Imagem do mapa</strong><small>' + (T.state.image ? 'Mapa carregado' : 'Nenhum mapa carregado') + '</small><div class="layer-state"><span class="state-pill ' + (visible ? '' : 'is-hidden') + '">' + (visible ? 'visível' : 'oculto') + '</span><span class="state-pill ' + (locked ? 'locked' : '') + '">' + (locked ? 'bloqueado' : 'livre') + '</span></div></div><div class="layer-actions"><button type="button" title="Exibir/ocultar mapa" data-action="map-visible">' + (visible ? 'Ocultar' : 'Mostrar') + '</button><button type="button" title="Bloquear/desbloquear mapa" data-action="map-lock">' + (locked ? 'Desbloquear' : 'Bloquear') + '</button></div></div>';
-
-    div.querySelector('[data-action="map-visible"]').addEventListener('click', function (event) {
-      event.stopPropagation();
-      T.state.settings.mapVisible = !visible;
-      refreshAll();
-      T.drawing.draw();
-      T.storage.autoSave();
-    });
-    div.querySelector('[data-action="map-lock"]').addEventListener('click', function (event) {
-      event.stopPropagation();
-      T.state.settings.mapLocked = !locked;
-      if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
-      refreshAll();
-      T.drawing.draw();
-      T.storage.autoSave();
-    });
+    const visibleText = visible ? '🙈 Ocultar' : '👁 Mostrar';
+    const lockText = locked ? '🔓 Desbloquear' : '🔒 Bloquear';
+    div.innerHTML = '<div class="layer-head"><div class="layer-title"><strong>Imagem do mapa</strong><small>' + (T.state.image ? 'Mapa carregado' : 'Nenhum mapa carregado') + '</small><div class="layer-state"><span class="state-pill ' + (visible ? '' : 'is-hidden') + '">' + (visible ? 'visível' : 'oculto') + '</span><span class="state-pill ' + (locked ? 'locked' : '') + '">' + (locked ? 'bloqueado' : 'livre') + '</span></div></div><div class="layer-actions"><button type="button" title="Exibir/ocultar mapa" data-layer-action="map-visible">' + visibleText + '</button><button type="button" title="Bloquear/desbloquear mapa" data-layer-action="map-lock">' + lockText + '</button></div></div>';
 
     els.objectList.appendChild(div);
   }
@@ -443,20 +468,20 @@
   function applyPropertyInput() {
     const obj = T.store.selectedObject();
     if (!obj) return;
-    obj.name = els.nameInput.value;
-    obj.color = els.colorInput.value;
-    obj.backgroundColor = els.backgroundColorInput.value;
-    obj.borderColor = els.borderColorInput.value;
-    obj.size = Number(els.sizeInput.value) || 1;
-    obj.borderWidth = Number(els.borderWidthInput.value) || 0;
-    obj.opacity = Number(els.opacityInput.value);
-    obj.rotation = Number(els.rotationInput.value) || 0;
-    obj.shape = els.shapeInput.value;
-    obj.icon = els.iconInput.value;
-    obj.rounded = els.roundedInput.checked;
-    obj.smooth = els.smoothInput.checked;
-    obj.visible = els.visibleInput.checked;
-    obj.locked = els.lockedInput.checked;
+    if (els.nameInput) obj.name = els.nameInput.value;
+    if (els.colorInput) obj.color = els.colorInput.value;
+    if (els.backgroundColorInput) obj.backgroundColor = els.backgroundColorInput.value;
+    if (els.borderColorInput) obj.borderColor = els.borderColorInput.value;
+    if (els.sizeInput) obj.size = Number(els.sizeInput.value) || 1;
+    if (els.borderWidthInput) obj.borderWidth = Number(els.borderWidthInput.value) || 0;
+    if (els.opacityInput) obj.opacity = Number(els.opacityInput.value);
+    if (els.rotationInput) obj.rotation = Number(els.rotationInput.value) || 0;
+    if (els.shapeInput) obj.shape = els.shapeInput.value;
+    if (els.iconInput) obj.icon = els.iconInput.value;
+    if (els.roundedInput) obj.rounded = els.roundedInput.checked;
+    if (els.smoothInput) obj.smooth = els.smoothInput.checked;
+    if (els.visibleInput) obj.visible = els.visibleInput.checked;
+    if (els.lockedInput) obj.locked = els.lockedInput.checked;
     if (T.store.rememberStyle) T.store.rememberStyle(obj);
     updateSelectionStatus(obj);
     updateLockedFields(obj);

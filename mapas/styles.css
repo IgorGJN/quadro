@@ -356,3 +356,70 @@ input[type='number'] { appearance: textfield; -moz-appearance: textfield; }
 .layer-item { position: relative; }
 .layer-actions { position: relative; z-index: 20; pointer-events: auto; }
 .layer-actions button, .layer-control-btn { position: relative; z-index: 30; pointer-events: auto; user-select: none; touch-action: manipulation; }
+
+/* v8: botões de camada em posição fixa com ícones compactos */
+.layer-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 78px;
+  align-items: start;
+  gap: 8px;
+}
+.layer-title {
+  min-width: 0;
+  overflow: hidden;
+}
+.layer-title strong,
+.layer-title small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.layer-state {
+  max-width: 100%;
+  overflow: hidden;
+}
+.layer-actions,
+.map-base-layer .layer-actions {
+  width: 78px;
+  min-width: 78px;
+  display: grid;
+  grid-template-columns: 36px 36px;
+  gap: 6px;
+  justify-content: end;
+  align-items: start;
+  flex: none;
+  position: sticky;
+  right: 0;
+}
+.layer-actions button,
+.layer-control-btn,
+.map-base-layer .layer-actions button {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  border-radius: 9px;
+  flex: 0 0 36px;
+  overflow: hidden;
+}
+.layer-control-btn {
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", Arial, sans-serif;
+}
+.layer-control-show,
+.layer-control-hide,
+.layer-control-lock,
+.layer-control-unlock {
+  font-weight: 700;
+}
+@media (max-width: 980px) {
+  .layer-head { grid-template-columns: minmax(0, 1fr) 78px; }
+  .layer-actions,
+  .map-base-layer .layer-actions { width: 78px; min-width: 78px; }
+  .layer-actions button,
+  .layer-control-btn,
+  .map-base-layer .layer-actions button { width: 36px; min-width: 36px; max-width: 36px; }
+}

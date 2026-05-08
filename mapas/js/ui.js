@@ -400,14 +400,15 @@
     return false;
   }
 
-  function makeLayerButton(text, title, action, objectId) {
+  function makeLayerButton(text, title, action, objectId, iconState) {
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'layer-control-btn';
+    button.className = 'layer-control-btn' + (iconState ? ' layer-control-' + iconState : '');
     button.textContent = text;
     button.title = title || text;
     button.dataset.layerAction = action;
     button.dataset.objectId = objectId || '';
+    if (iconState) button.dataset.iconState = iconState;
     button.setAttribute('aria-label', title || text);
 
     // Três caminhos de acionamento para cobrir mouse, toque e navegadores que
@@ -637,8 +638,8 @@
 
         const actions = document.createElement('div');
         actions.className = 'layer-actions';
-        actions.appendChild(makeLayerButton(obj.visible === false ? 'Mostrar' : 'Ocultar', 'Mostrar ou ocultar camada', 'object-visible', obj.id));
-        actions.appendChild(makeLayerButton(obj.locked ? 'Desbloquear' : 'Bloquear', 'Bloquear ou desbloquear camada', 'object-lock', obj.id));
+        actions.appendChild(makeLayerButton(obj.visible === false ? '👁' : '🙈', obj.visible === false ? 'Mostrar camada' : 'Ocultar camada', 'object-visible', obj.id, obj.visible === false ? 'show' : 'hide'));
+        actions.appendChild(makeLayerButton(obj.locked ? '🔓' : '🔒', obj.locked ? 'Desbloquear camada' : 'Bloquear camada', 'object-lock', obj.id, obj.locked ? 'unlock' : 'lock'));
 
         head.appendChild(title);
         head.appendChild(actions);
@@ -700,8 +701,8 @@
 
     const actions = document.createElement('div');
     actions.className = 'layer-actions';
-    actions.appendChild(makeLayerButton(visible ? 'Ocultar mapa' : 'Mostrar mapa', 'Exibir ou ocultar mapa base', 'map-visible'));
-    actions.appendChild(makeLayerButton(locked ? 'Desbloquear mapa' : 'Bloquear mapa', 'Bloquear ou desbloquear movimento/zoom do mapa', 'map-lock'));
+    actions.appendChild(makeLayerButton(visible ? '🙈' : '👁', visible ? 'Ocultar mapa base' : 'Mostrar mapa base', 'map-visible', '', visible ? 'hide' : 'show'));
+    actions.appendChild(makeLayerButton(locked ? '🔓' : '🔒', locked ? 'Desbloquear movimento/zoom do mapa' : 'Bloquear movimento/zoom do mapa', 'map-lock', '', locked ? 'unlock' : 'lock'));
 
     head.appendChild(title);
     head.appendChild(actions);

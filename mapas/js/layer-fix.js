@@ -2,7 +2,7 @@
   'use strict';
 
   const T = window.Territorios || (window.Territorios = {});
-  const VERSION = 7;
+  const VERSION = 8;
   let lastKey = '';
   let lastTime = 0;
 

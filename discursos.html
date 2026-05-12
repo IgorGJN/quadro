@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Programação de Discursos Públicos</title>
+<style>
+@page { size: A4; margin: 0; }
+*{ box-sizing:border-box; }
+:root{ --jw-blue:#4a6da7; --jw-green:#4f7f67; --line:#c9d6df; --soft:#eef6f8; --text:#1f2933; }
+body{ margin:0; background:#e8edf2; font-family: Arial, Helvetica, sans-serif; color:var(--text); }
+.toolbar{ position:sticky; top:0; z-index:5; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; padding:10px; background:#fff; border-bottom:1px solid #d8dee5; }
+button{ border:0; border-radius:8px; padding:9px 14px; background:var(--jw-blue); color:white; font-weight:700; cursor:pointer; }
+button.secondary{ background:var(--jw-green); }
+button.danger{ background:#8a3d3d; }
+.page{ width:210mm; height:297mm; position:relative; overflow:hidden; page-break-after:always; break-after:page; background:#fff; margin:14px auto; box-shadow:0 8px 30px rgba(0,0,0,.16); }
+.content{ position:absolute; top:10mm; right:10mm; bottom:10mm; left:10mm; display:flex; flex-direction:column; }
+.placeholder{ height:22mm; border:2px dashed #b6c5d4; border-radius:14px; display:flex; align-items:center; justify-content:center; text-align:center; color:#607083; font-size:12px; margin-bottom:7mm; background:linear-gradient(135deg,#f8fbfd,#eef5f8); }
+.title{ text-align:center; font-weight:800; letter-spacing:.8px; color:#172033; font-size:22px; line-height:1.15; margin:0; text-transform:uppercase; }
+.subtitle{ text-align:center; font-size:18px; font-weight:700; color:#334155; margin:2mm 0 7mm; text-transform:uppercase; }
+[contenteditable="true"]{ outline:0; }
+[contenteditable="true"]:focus{ box-shadow:0 0 0 2px rgba(74,109,167,.25); border-radius:4px; }
+table{ width:100%; border-collapse:collapse; table-layout:fixed; flex:1; }
+th{ background:var(--jw-green); color:#fff; font-size:13px; text-transform:uppercase; padding:7px 5px; border:1px solid #406b56; letter-spacing:.4px; }
+td{ border:1px solid var(--line); padding:6px 6px; text-align:center; vertical-align:middle; font-size:13.5px; line-height:1.15; font-weight:600; }
+tbody tr:nth-child(odd) td{ background:#f7fbfc; }
+tbody tr:nth-child(even) td{ background:#eaf3f5; }
+td.tema{ font-weight:800; font-size:13px; }
+.col-data{ width:23mm; }.col-presidente{ width:34mm; }.col-tema{ width:auto; }.col-num{ width:14mm; }.col-orador{ width:39mm; }
+.footer{ height:9mm; display:flex; align-items:end; justify-content:center; color:#667085; font-size:10px; }
+@media print{
+  body{ background:white; }
+  .toolbar{ display:none; }
+  .page{ margin:0; box-shadow:none; }
+}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="addRow()">Adicionar linha</button>
+  <button class="danger" onclick="removeRow()">Remover última</button>
+  <button class="secondary" onclick="saveData()">Salvar</button>
+  <button class="secondary" onclick="loadData()">Restaurar</button>
+  <button onclick="window.print()">Imprimir / PDF</button>
+</div>
+<section class="page">
+  <main class="content">
+    <div class="placeholder" contenteditable="true">Espaço para imagem ou banner do JW.org — substitua este texto ou cole uma imagem aqui</div>
+    <h1 class="title" contenteditable="true">PROGRAMAÇÃO DE DISCURSOS PÚBLICOS</h1>
+    <div class="subtitle" contenteditable="true">MAIO 2026 – JULHO 2026</div>
+    <table id="schedule">
+      <thead><tr><th class="col-data">Data</th><th class="col-presidente">Presidente</th><th class="col-tema">Tema</th><th class="col-num">Nº</th><th class="col-orador">Orador</th></tr></thead>
+      <tbody>
+        <tr><td contenteditable="true">02/05/26</td><td contenteditable="true">Igor Gabriel</td><td class="tema" contenteditable="true">“A cena deste mundo está mudando”</td><td contenteditable="true">98</td><td contenteditable="true">Ícaro Rodrigues</td></tr>
+        <tr><td contenteditable="true">09/05/26</td><td contenteditable="true">Adelmo Martins</td><td class="tema" contenteditable="true">Quem se salvará?</td><td contenteditable="true">126</td><td contenteditable="true">Anselmo Cação</td></tr>
+        <tr><td contenteditable="true">16/05/26</td><td contenteditable="true">Gisleno Pinheiro</td><td class="tema" contenteditable="true">Você está no caminho para a vida eterna?</td><td contenteditable="true">192</td><td contenteditable="true">Rafael Pinheiro</td></tr>
+        <tr><td contenteditable="true">23/05/26</td><td contenteditable="true">Igor Gabriel</td><td class="tema" contenteditable="true">Boas notícias num mundo violento</td><td contenteditable="true">85</td><td contenteditable="true">Gisleno Pinheiro</td></tr>
+        <tr><td contenteditable="true">30/05/26</td><td contenteditable="true">Adelmo Martins</td><td class="tema" contenteditable="true">Por que mostrar amor abnegado?</td><td contenteditable="true">69</td><td contenteditable="true">Igor Gabriel</td></tr>
+        <tr><td contenteditable="true">06/06/26</td><td contenteditable="true">Gisleno Pinheiro</td><td class="tema" contenteditable="true">Fiquem parados e vejam como Jeová os salvará</td><td contenteditable="true">41</td><td contenteditable="true">Jonathan César</td></tr>
+        <tr><td contenteditable="true">13/06/26</td><td contenteditable="true">Gisleno Pinheiro</td><td class="tema" contenteditable="true">(DISCURSO DA VISITA)<br>Você escolherá vida eterna?</td><td contenteditable="true"></td><td contenteditable="true">Elias Arrais</td></tr>
+        <tr><td contenteditable="true">20/06/26</td><td contenteditable="true">Igor Gabriel</td><td class="tema" contenteditable="true">Como você pode ter a verdadeira alegria?</td><td contenteditable="true">103</td><td contenteditable="true">Antonio Medeiros</td></tr>
+        <tr><td contenteditable="true">27/06/26</td><td contenteditable="true">Adelmo Martins</td><td class="tema" contenteditable="true">Você vai ser marcado para sobreviver?</td><td contenteditable="true">34</td><td contenteditable="true">Clécio Bertunes</td></tr>
+        <tr><td contenteditable="true">04/07/26</td><td contenteditable="true">Igor Gabriel</td><td class="tema" contenteditable="true">É possível que a humanidade seja completamente curada?</td><td contenteditable="true">111</td><td contenteditable="true">Gisleno Pinheiro</td></tr>
+        <tr><td contenteditable="true">11/07/26</td><td contenteditable="true">Gisleno Pinheiro</td><td class="tema" contenteditable="true">A religião verdadeira atende às necessidades da sociedade humana</td><td contenteditable="true">94</td><td contenteditable="true">Igor Gabriel</td></tr>
+        <tr><td contenteditable="true">18/07/26</td><td contenteditable="true">Antonio Medeiros</td><td class="tema" contenteditable="true">Quem tem sede da verdade, venha!</td><td contenteditable="true">89</td><td contenteditable="true">Adelmo Martins</td></tr>
+        <tr><td contenteditable="true">25/07/26</td><td contenteditable="true">Adelmo Martins</td><td class="tema" contenteditable="true">Como os ensinos de Jesus podem ajudar você?</td><td contenteditable="true">44</td><td contenteditable="true">Antonio Medeiros</td></tr>
+      </tbody>
+    </table>
+    <div class="footer" contenteditable="true">Congregação Jaguaretama</div>
+  </main>
+</section>
+<script>
+const key='discursos_publicos_v1';
+function addRow(){const tb=document.querySelector('#schedule tbody');const tr=tb.insertRow();['Data','Presidente','Tema','Nº','Orador'].forEach((x,i)=>{const td=tr.insertCell();td.contentEditable='true';td.textContent=x;if(i===2)td.className='tema';});}
+function removeRow(){const tb=document.querySelector('#schedule tbody'); if(tb.rows.length>1) tb.deleteRow(-1);}
+function saveData(){localStorage.setItem(key,document.querySelector('.page').innerHTML); alert('Salvo neste navegador.');}
+function loadData(){const data=localStorage.getItem(key); if(data) document.querySelector('.page').innerHTML=data; else alert('Nada salvo ainda.');}
+</script>
+</body>
+</html>

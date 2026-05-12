@@ -9,9 +9,9 @@
       --azul: #0f4f8a;
       --azul-escuro: #06345d;
       --azul-claro: #eaf4ff;
-      --verde: #138f91;
-      --dourado: #b77b09;
-      --vermelho: #b0272d;
+      --verde: #3C7F8B;
+      --dourado: #D68F00;
+      --vermelho: #BF2F13;
       --texto: #1e2b3c;
       --linha: #d8e1ea;
       --fundo: #f4f7fa;
@@ -195,13 +195,13 @@
     }
 
     .row-split strong { color: #111827; }
-    .song { color: var(--azul-escuro); font-weight: 800; white-space: nowrap; }
+    .song { color: var(--azul-escuro); font-weight: 800; white-space: nowrap; font-size: 12px; }
 
     .intro-line {
       display: flex;
       gap: 9px;
       align-items: center;
-      padding: 5px 0 7px;
+      padding: 2px 0 7px;
       border-bottom: 1px solid var(--linha);
       font-size: 9pt;
       font-weight: 700;
@@ -313,6 +313,16 @@
       border-radius: 8px;
     }
 
+    .comentarios {
+      font-size: 10px;
+      /* width: 145px;*/
+    }
+
+    .finais {
+      font-size: 9px;
+      font-weight: 100;
+    }
+
     .bottom-image img { width: 100%; height: auto; display: block; }
 
     input[type="file"] { display: none; }
@@ -326,6 +336,23 @@
       .week-card { break-inside: avoid; }
       @page { size: A4; margin: 8mm; }
     }
+
+    .icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 1;
+}
+
+.icon img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 2px;
+}
   </style>
 </head>
 <body>
@@ -344,7 +371,10 @@
   <main class="page" id="page">
     <header class="header">
       <div class="logo-box">
-        <span id="logoPlaceholder">▧</span>
+
+        <span class="logoPlaceholder">
+          <img src="reuniao.png" alt="">
+        </span>        
         <img id="logoImage" alt="Imagem superior" style="display:none" />
       </div>
       <div class="title">
@@ -386,33 +416,45 @@
         <span contenteditable="true">Comentários iniciais (1 min)</span>
       </div>
 
-      <div class="section-title teal"><span class="icon">◇</span><span>Tesouros da Palavra de Deus</span></div>
+      <div class="section-title teal">
+        <span class="icon">
+          <img src="tesouros.png" alt="">
+        </span>
+<span>Tesouros da Palavra de Deus</span></div>
       <div class="items">
         <div class="item"><span class="num teal">1</span><div contenteditable="true"><span class="assignment-title">“Não tenha medo...”</span> (10 min) — <span class="person">Designado</span></div></div>
         <div class="item"><span class="num teal">2</span><div contenteditable="true"><span class="assignment-title">Joias espirituais</span> (10 min) — <span class="person">Designado</span></div></div>
         <div class="item"><span class="num teal">3</span><div contenteditable="true"><span class="assignment-title">Leitura da Bíblia</span> (4 min) — <span class="person">Designado</span></div></div>
       </div>
 
-      <div class="section-title gold"><span class="icon">♟</span><span>Faça seu melhor no ministério</span></div>
+      <div class="section-title gold">
+        <span class="icon">
+          <img src="ministerio.png" alt="">
+        </span>        
+        <span>Faça seu melhor no ministério</span></div>
       <div class="items ministry-items">
         <div class="item"><span class="num gold">4</span><div contenteditable="true"><span class="assignment-title">Iniciando conversas</span> (3 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
         <div class="item"><span class="num gold">5</span><div contenteditable="true"><span class="assignment-title">Cultivando o interesse</span> (4 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
         <div class="item"><span class="num gold">6</span><div contenteditable="true"><span class="assignment-title">Fazendo discípulos</span> (5 min) — <span class="person">Designado</span>/<span class="assistant-person">Ajudante</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
       </div>
 
-      <div class="section-title red"><span class="icon">♥</span><span>Nossa Vida Cristã</span></div>
+      <div class="section-title red">
+        <span class="icon">
+          <img src="vida.png" alt="">
+        </span>        
+        <span>Nossa Vida Cristã</span></div>
       <div class="song" contenteditable="true">Cântico 76</div>
       <div class="items christian-items">
         <div class="item"><span class="num red">7</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (6 min) — <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
         <div class="item"><span class="num red">8</span><div contenteditable="true"><span class="assignment-title">Parte da Vida Cristã</span> (9 min) — <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
-        <div class="item"><span class="num red">9</span><div contenteditable="true"><span class="assignment-title">Estudo bíblico de congregação</span> (30 min) — <span class="person">Designado</span><br>| Leitor: <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
+        <div class="item"><span class="num red">9</span><div contenteditable="true"><span class="assignment-title">Estudo bíblico de congregação</span> (30 min) — <span class="person">Designado</span> | Leitor: <span class="person">Designado</span></div><button class="item-delete" onclick="deleteItem(this)" title="Excluir esta parte">×</button></div>
       </div>
 
       <div class="intro-line" style="border-bottom:0;padding-bottom:0">
-        <span contenteditable="true">Comentários finais (3 min)</span>
+        <span contenteditable="true" class="comentarios">Comentários finais <span class="finais">(3 min)</span></span>
         <span>|</span>
         <span class="song" contenteditable="true">Cântico 42 e oração</span>
-        <span contenteditable="true">— Designado</span>
+        <span contenteditable="true">Designado</span>
       </div>
 
       <div class="card-actions">

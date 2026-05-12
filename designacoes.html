@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Designações Congregação</title>
+<style>
+@page { size: A4; margin: 0; }
+*{ box-sizing:border-box; }
+:root{ --green:#5f796a; --green2:#e8f1ec; --line:#262b2f; --text:#111827; --blue:#4a6da7; }
+body{ margin:0; background:#e8edf2; font-family:Arial, Helvetica, sans-serif; color:var(--text); }
+.toolbar{ position:sticky; top:0; z-index:5; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; padding:10px; background:#fff; border-bottom:1px solid #d8dee5; }
+button{ border:0; border-radius:8px; padding:9px 14px; background:var(--blue); color:white; font-weight:700; cursor:pointer; }
+button.secondary{ background:var(--green); } button.danger{ background:#8a3d3d; }
+.page{ width:210mm; height:297mm; position:relative; overflow:hidden; page-break-after:always; break-after:page; background:#fff; margin:14px auto; box-shadow:0 8px 30px rgba(0,0,0,.16); }
+.content{ position:absolute; top:10mm; right:10mm; bottom:10mm; left:10mm; display:flex; flex-direction:column; }
+.placeholder{ height:42mm; border:2px dashed #bac7c0; border-radius:14px; display:flex; align-items:center; justify-content:center; text-align:center; color:#607083; font-size:12px; margin-bottom:6mm; background:linear-gradient(135deg,#fbfcfb,#edf4f0); }
+.title{ border:2px solid var(--line); border-bottom:0; text-align:center; margin:0; padding:7px; font-size:24px; line-height:1.1; font-weight:900; text-transform:uppercase; letter-spacing:.5px; }
+[contenteditable="true"]{ outline:0; }
+[contenteditable="true"]:focus{ box-shadow:0 0 0 2px rgba(74,109,167,.25); border-radius:4px; }
+table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+th,td{ border:2px solid var(--line); text-align:center; vertical-align:middle; padding:6px 5px; line-height:1.1; }
+th{ background:#f1f2f1; font-size:18px; font-style:italic; font-weight:900; }
+td{ font-size:17px; font-weight:700; height:12.5mm; }
+tbody tr:nth-child(even) td{ background:var(--green2); }
+.w-semana{ width:24mm; }
+.w-ind1{ width:45mm; }
+.w-e{ width:4mm; }
+.w-ind2{ width:45mm; }
+.w-vol{ width:24mm; }
+.w-limp{ width:27mm; }
+.w-leitor{ width:21mm; }
+#assignments th[colspan="3"]{ text-align:center; }
+#assignments tbody td:nth-child(3){ width:4mm; min-width:4mm; max-width:4mm; padding-left:0; padding-right:0; font-size:15px; }
+td:nth-child(3){ padding-left:1px; padding-right:1px; }
+td:first-child:not(.special){ font-weight:700; }
+.image{height: 100%; width: 100%;}
+tbody tr:not(.manual-date) td:first-child{ background-clip:padding-box; }
+.special{ background:#f5f5f5 !important; font-weight:900; letter-spacing:.6px; text-transform:uppercase; }
+.footer{ margin-top:auto; height:10mm; display:flex; align-items:end; justify-content:center; color:#667085; font-size:10px; }
+@media print{ body{ background:white; } .toolbar{ display:none; } .page{ margin:0; box-shadow:none; } }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <button onclick="addRow()">Adicionar semana</button>
+  <button class="secondary" onclick="updateDatesFromFirst()">Atualizar datas</button>
+  <button class="danger" onclick="removeRow()">Remover última</button>
+  <button class="secondary" onclick="addSpecial()">Adicionar linha especial</button>
+  <button class="secondary" onclick="saveData()">Salvar</button>
+  <button class="secondary" onclick="loadData()">Restaurar</button>
+  <button onclick="window.print()">Imprimir / PDF</button>
+</div>
+<section class="page">
+  <main class="content">
+    <div class="placeholder" contenteditable="true"><img class="image" src="reuniao.jpg" alt=""></div>
+    <h1 class="title" contenteditable="true">DESIGNAÇÕES CONGREGAÇÃO JAGUARETAMA</h1>
+    <table id="assignments">
+      <colgroup>
+        <col class="w-semana"><col class="w-ind1"><col class="w-e"><col class="w-ind2"><col class="w-vol"><col class="w-limp"><col class="w-leitor">
+      </colgroup>
+      <thead><tr><th>Sem. de:</th><th colspan="3">Indicadores</th><th>Volante</th><th>Limpeza</th><th>Leitor</th></tr></thead>
+      <tbody>
+        <tr><td contenteditable="true">04/maio</td><td contenteditable="true">Gisleno</td><td contenteditable="true">e</td><td contenteditable="true">Simon</td><td contenteditable="true">Adelmo</td><td contenteditable="true">Grupo 2</td><td contenteditable="true">José</td></tr>
+        <tr><td contenteditable="true">11/maio</td><td contenteditable="true">Igor</td><td contenteditable="true">e</td><td contenteditable="true">José</td><td contenteditable="true">Simon</td><td contenteditable="true">Grupo 3</td><td contenteditable="true">Gabriel</td></tr>
+        <tr><td contenteditable="true">18/maio</td><td contenteditable="true">Adelmo</td><td contenteditable="true">e</td><td contenteditable="true">Simon</td><td contenteditable="true">José</td><td contenteditable="true">Grupo 1</td><td contenteditable="true">Adelmo</td></tr>
+        <tr><td contenteditable="true">25/maio</td><td contenteditable="true">Gabriel</td><td contenteditable="true">e</td><td contenteditable="true">Gisleno</td><td contenteditable="true">Gabriel</td><td contenteditable="true">Grupo 2</td><td contenteditable="true">Simon</td></tr>
+        <tr><td contenteditable="true">01/junho</td><td contenteditable="true">Gisleno</td><td contenteditable="true">e</td><td contenteditable="true">Gabriel</td><td contenteditable="true">Adelmo</td><td contenteditable="true">Grupo 3</td><td contenteditable="true">José</td></tr>
+        <tr><td contenteditable="true">08/junho</td><td contenteditable="true">Gabriel</td><td contenteditable="true">e</td><td contenteditable="true">José</td><td contenteditable="true">Simon</td><td contenteditable="true">Grupo 1</td><td contenteditable="true"></td></tr>
+        <tr><td contenteditable="true">15/junho</td><td contenteditable="true">Simon</td><td contenteditable="true">e</td><td contenteditable="true">Adelmo</td><td contenteditable="true">José</td><td contenteditable="true">Grupo 2</td><td contenteditable="true">Gabriel</td></tr>
+        <tr><td contenteditable="true">22/junho</td><td contenteditable="true">Igor</td><td contenteditable="true">e</td><td contenteditable="true">José</td><td contenteditable="true">Gabriel</td><td contenteditable="true">Grupo 3</td><td contenteditable="true">Adelmo</td></tr>
+        <tr><td contenteditable="true">29/junho</td><td contenteditable="true">Adelmo</td><td contenteditable="true">e</td><td contenteditable="true">Gisleno</td><td contenteditable="true">Adelmo</td><td contenteditable="true">Grupo 1</td><td contenteditable="true">Simon</td></tr>
+        <tr><td contenteditable="true">06/julho</td><td contenteditable="true">Gabriel</td><td contenteditable="true">e</td><td contenteditable="true">Adelmo</td><td contenteditable="true">Simon</td><td contenteditable="true">Grupo 2</td><td contenteditable="true">José</td></tr>
+        <tr><td contenteditable="true">13/julho</td><td contenteditable="true">José</td><td contenteditable="true">e</td><td contenteditable="true">Simon</td><td contenteditable="true">José</td><td contenteditable="true">Grupo 3</td><td contenteditable="true">Gabriel</td></tr>
+        <tr><td contenteditable="true">20/julho</td><td contenteditable="true">Gisleno</td><td contenteditable="true">e</td><td contenteditable="true">Gabriel</td><td contenteditable="true">Gabriel</td><td contenteditable="true">Grupo 1</td><td contenteditable="true">Adelmo</td></tr>
+        <tr><td contenteditable="true">27/julho</td><td class="special" colspan="6" contenteditable="true">CONGRESSO</td></tr>
+      </tbody>
+    </table>
+    <div class="footer" contenteditable="true">Congregação Jaguaretama</div>
+  </main>
+</section>
+<script>
+const key='designacoes_congregacao_v3';
+const meses=['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+const mesesCurto={jan:0,janeiro:0,fev:1,fevereiro:1,mar:2,março:2,marco:2,abr:3,abril:3,mai:4,maio:4,jun:5,junho:5,jul:6,julho:6,ago:7,agosto:7,set:8,setembro:8,out:9,outubro:9,nov:10,novembro:10,dez:11,dezembro:11};
+
+function parsePtDate(text){
+  const t=(text||'').trim().toLowerCase().replace(/\s+/g,'');
+  const m=t.match(/^(\d{1,2})[\/\-.]([a-zç]+|\d{1,2})(?:[\/\-.](\d{2,4}))?$/i);
+  if(!m) return null;
+  const dia=Number(m[1]);
+  let mes=/^\d+$/.test(m[2]) ? Number(m[2])-1 : mesesCurto[m[2]];
+  if(mes===undefined || isNaN(mes) || dia<1 || dia>31) return null;
+  let ano=m[3] ? Number(m[3]) : new Date().getFullYear();
+  if(ano<100) ano+=2000;
+  const d=new Date(ano,mes,dia);
+  if(d.getDate()!==dia || d.getMonth()!==mes) return null;
+  return d;
+}
+function formatPtDate(d){return String(d.getDate()).padStart(2,'0')+'/'+meses[d.getMonth()];}
+function regularRows(){return [...document.querySelectorAll('#assignments tbody tr')].filter(tr=>tr.cells.length===7);}
+function updateDatesFromFirst(options={}){
+  const rows=regularRows();
+  if(!rows.length) return;
+  const firstCell=rows[0].cells[0];
+  const raw=firstCell.textContent.trim();
+  const first=parsePtDate(raw);
+
+  if(!first){
+    firstCell.style.background='#fff4e5';
+    firstCell.title='Use o formato 04/maio ou 04/05/2026.';
+    if(options.showAlert && raw.length>=5){
+      alert('Digite a primeira data no formato 04/maio ou 04/05/2026.');
+    }
+    return;
+  }
+
+  firstCell.style.background='';
+  rows.forEach((tr,i)=>{
+    const d=new Date(first);
+    d.setDate(first.getDate()+(i*7));
+    tr.cells[0].textContent=formatPtDate(d);
+    tr.cells[0].contentEditable=(i===0?'true':'false');
+    tr.cells[0].title=i===0?'Edite esta primeira data; as demais serão calculadas automaticamente.':'Data calculada automaticamente, sempre 7 dias depois da linha anterior.';
+  });
+}
+function watchFirstDate(){
+  const first=regularRows()[0]?.cells[0];
+  if(!first || first.dataset.dateWatch) return;
+  first.dataset.dateWatch='1';
+  first.addEventListener('input',()=>{
+    clearTimeout(window.__dateTimer);
+    first.style.background='';
+    window.__dateTimer=setTimeout(()=>{
+      if(parsePtDate(first.textContent)) updateDatesFromFirst();
+    },300);
+  });
+  first.addEventListener('blur',()=>updateDatesFromFirst({showAlert:true}));
+  first.addEventListener('keydown',e=>{ if(e.key==='Enter'){ e.preventDefault(); first.blur(); }});
+}
+function addRow(){
+  const tb=document.querySelector('#assignments tbody');
+  const tr=tb.insertRow();
+  ['','Indicador 1','e','Indicador 2','Volante','Limpeza','Leitor'].forEach((x,i)=>{const td=tr.insertCell();td.contentEditable=i===0?'false':'true';td.textContent=x;});
+  updateDatesFromFirst();
+}
+function addSpecial(){const tb=document.querySelector('#assignments tbody');const tr=tb.insertRow();let td=tr.insertCell();td.contentEditable='true';td.textContent='Data';td=tr.insertCell();td.colSpan=6;td.contentEditable='true';td.textContent='CONGRESSO';td.className='special';}
+function removeRow(){const tb=document.querySelector('#assignments tbody'); if(tb.rows.length>1){ tb.deleteRow(-1); updateDatesFromFirst(); }}
+function saveData(){localStorage.setItem(key,document.querySelector('.page').innerHTML); alert('Salvo neste navegador.');}
+function loadData(){const data=localStorage.getItem(key); if(data){ document.querySelector('.page').innerHTML=data; initDates(); } else alert('Nada salvo ainda.');}
+function initDates(){watchFirstDate();updateDatesFromFirst();}
+document.addEventListener('DOMContentLoaded',initDates);
+</script>
+</body>
+</html>

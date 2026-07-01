@@ -399,10 +399,21 @@
     <button onclick="loadData()" class="secondary">Restaurar</button>
     <button onclick="clearData()" class="danger">Limpar salvo</button>
     <button onclick="window.print()">Imprimir / PDF</button>
-    <label class="file-label" for="logoInput">Trocar imagem superior.</label>
+    <!--- <label class="file-label" for="logoInput">Trocar imagem superior.</label>
     <input id="logoInput" type="file" accept="image/*" onchange="setImage(event, 'logoImage', 'logoPlaceholder')" />
-    <label class="file-label" for="bottomInput">Trocar imagem inferior</label>
-    <input id="bottomInput" type="file" accept="image/*" onchange="setImage(event, 'bottomImage', 'bottomPlaceholder')" />
+    <label class="file-label" for="bottomInput">Trocar imagem inferior</label> 
+    <input id="bottomInput" type="file" accept="image/*" onchange="setImage(event, 'bottomImage', 'bottomPlaceholder')" /> --->
+    <button onclick="exportBackup()" class="secondary">Backup JSON</button>
+
+<label class="file-label" for="restoreJson">
+    Restaurar JSON
+</label>
+
+<input
+    id="restoreJson"
+    type="file"
+    accept=".json"
+    onchange="importBackup(event)">
   </div>
 
   <main class="page" id="page">
@@ -624,6 +635,72 @@
     });
 
     for (let i = 0; i < 4; i++) addWeek();
+
+
+    function exportBackup() {
+
+    const data = {
+        data: new Date().toISOString(),
+        html: document.getElementById("page").innerHTML,
+        logo: document.getElementById("logoImage").src || "",
+        bottom: document.getElementById("bottomImage").src || ""
+    };
+
+    const blob = new Blob(
+        [JSON.stringify(data, null, 2)],
+        { type: "application/json" }
+    );
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+
+    const hoje = new Date();
+
+    const nome =
+        `programa_${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}-${String(hoje.getDate()).padStart(2,"0")}.json`;
+
+    a.download = nome;
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+}
+
+function importBackup(event) {
+
+    const file = event.target.files[0];
+
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function(e){
+
+        try{
+
+            const data = JSON.parse(e.target.result);
+
+            document.getElementById("page").innerHTML = data.html;
+
+            renumberCards();
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+
+            alert("Backup restaurado com sucesso.");
+
+        }catch{
+
+            alert("Arquivo JSON inválido.");
+
+        }
+
+    };
+
+    reader.readAsText(file);
+
+}
   </script>
 </body>
 </html>

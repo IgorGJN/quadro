@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Diagramador de Imagens para Impressão</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#2563eb'
+                    }
+                }
+            }
+        };
+    </script>
+
+    <style>
+
+        /* =========================================================
+           CONFIGURAÇÕES GERAIS
+        ========================================================= */
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #0f172a;
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+
+        /* =========================================================
+           DROPZONE
+        ========================================================= */
+
+        .dropzone.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+            transform: scale(1.005);
+        }
+
+
+        /* =========================================================
+           ÁREA DE PREVIEW
+        ========================================================= */
+
+        #previewArea {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+        /*
+         * Uma folha A4 possui:
+         * 21 cm x 29,7 cm
+         *
+         * Como @page usa 1,5 cm de margem:
+         *
+         * largura útil = 21 - 3 = 18 cm
+         * altura útil   = 29,7 - 3 = 26,7 cm
+         */
+
+        .print-sheet {
+            position: relative;
+
+            width: 18cm;
+            min-height: 26.7cm;
+
+            background: white;
+
+            box-shadow:
+                0 10px 30px rgba(15, 23, 42, 0.12);
+
+            overflow: hidden;
+
+            padding: 0;
+
+            /*
+             * Cada página começa em uma nova folha.
+             */
+            break-after: page;
+            page-break-after: always;
+        }
+
+        .print-sheet:last-child {
+            break-after: auto;
+            page-break-after: auto;
+        }
+
+
+        /*
+         * Área interna onde as imagens ficam.
+         *
+         * Usamos flex-wrap para permitir várias imagens
+         * lado a lado quando houver espaço.
+         */
+        .sheet-content {
+            width: 18cm;
+            min-height: 26.7cm;
+
+            display: flex;
+            flex-wrap: wrap;
+            align-content: flex-start;
+
+            overflow: hidden;
+        }
+
+
+        /* =========================================================
+           ITEM DE IMAGEM
+        ========================================================= */
+
+        .print-item {
+            position: relative;
+
+            flex: 0 0 auto;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            overflow: hidden;
+
+            /*
+             * Evita que o navegador corte uma imagem
+             * no meio durante a impressão.
+             */
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        .print-item img {
+            display: block;
+
+            width: 100%;
+            height: 100%;
+
+            object-fit: fill;
+        }
+
+
+        /* =========================================================
+           MINIATURAS
+        ========================================================= */
+
+        .thumbnail {
+            width: 90px;
+            height: 90px;
+
+            object-fit: contain;
+
+            background: #f8fafc;
+
+            border-radius: 8px;
+        }
+
+
+        /* =========================================================
+           BOTÃO FLUTUANTE
+        ========================================================= */
+
+        .print-floating-button {
+            position: fixed;
+
+            right: 24px;
+            bottom: 24px;
+
+            z-index: 100;
+
+            box-shadow:
+                0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+
+
+        /* =========================================================
+           IMPRESSÃO
+        ========================================================= */
+
+        @page {
+            size: A4 portrait;
+
+            /*
+             * REGRA CRÍTICA:
+             * margem física de 1,5 cm
+             */
+            margin: 1.5cm;
+        }
+
+
+        @media print {
+
+            /*
+             * O navegador imprime somente a área necessária.
+             */
+            html,
+            body {
+                width: 100%;
+                margin: 0;
+                padding: 0;
+
+                background: white;
+            }
+
+            /*
+             * Tudo que tiver .no-print desaparece.
+             */
+            .no-print {
+                display: none !important;
+            }
+
+            /*
+             * Remove sombras e espaçamentos externos.
+             */
+            #previewArea {
+                display: block;
+
+                margin: 0;
+                padding: 0;
+            }
+
+            /*
+             * Cada folha corresponde à área útil
+             * de uma página A4 depois das margens.
+             */
+            .print-sheet {
+                width: 18cm;
+                height: 26.7cm;
+                min-height: 26.7cm;
+
+                margin: 0;
+                padding: 0;
+
+                box-shadow: none;
+
+                overflow: hidden;
+
+                break-after: page;
+                page-break-after: always;
+            }
+
+            .print-sheet:last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+            .sheet-content {
+                width: 18cm;
+                height: 26.7cm;
+                min-height: 26.7cm;
+
+                overflow: hidden;
+            }
+
+            .print-item {
+                /*
+                 * Muito importante para evitar cortes.
+                 */
+                break-inside: avoid;
+                page-break-inside: avoid;
+
+                overflow: hidden;
+            }
+
+            .print-item img {
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+
+
+        /* =========================================================
+           PEQUENOS AJUSTES RESPONSIVOS
+        ========================================================= */
+
+        @media (max-width: 900px) {
+
+            .print-sheet {
+                transform-origin: top center;
+
+                /*
+                 * A folha continua tendo tamanho físico A4.
+                 * O container externo permite visualização
+                 * em telas menores.
+                 */
+            }
+        }
+
+    </style>
+</head>
+
+
+<body>
+
+    <!-- =========================================================
+         HEADER
+    ========================================================= -->
+
+    <header class="no-print bg-white border-b border-slate-200 sticky top-0 z-50">
+
+        <div class="max-w-7xl mx-auto px-4 py-4">
+
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+
+                <div>
+
+                    <h1 class="text-xl font-bold text-slate-900">
+                        Diagramador de Imagens
+                    </h1>
+
+                    <p class="text-sm text-slate-500">
+                        Prepare imagens para impressão ou PDF em A4
+                    </p>
+
+                </div>
+
+                <div class="flex items-center gap-2">
+
+                    <span
+                        id="imageCounter"
+                        class="text-sm text-slate-500"
+                    >
+                        0 imagens
+                    </span>
+
+                    <button
+                        id="clearAllButton"
+                        type="button"
+                        class="hidden px-3 py-2 rounded-lg text-sm
+                               bg-red-50 text-red-600
+                               hover:bg-red-100 transition"
+                    >
+                        Limpar tudo
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =========================================================
+         CONTEÚDO PRINCIPAL
+    ========================================================= -->
+
+    <main class="no-print max-w-7xl mx-auto px-4 py-6">
+
+        <!-- =====================================================
+             DROPZONE
+        ====================================================== -->
+
+        <section
+            id="dropzone"
+            class="
+                dropzone
+                border-2 border-dashed border-slate-300
+                rounded-2xl
+                bg-white
+                p-8
+                text-center
+                cursor-pointer
+                transition-all
+                duration-200
+                hover:border-blue-400
+                hover:bg-slate-50
+            "
+        >
+
+            <input
+                id="fileInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                hidden
+            >
+
+            <div class="flex flex-col items-center">
+
+                <div
+                    class="
+                        w-14 h-14
+                        rounded-full
+                        bg-blue-50
+                        text-blue-600
+                        flex items-center justify-center
+                        mb-4
+                    "
+                >
+
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path d="M12 16V4"></path>
+                        <path d="m7 9 5-5 5 5"></path>
+                        <path d="M20 16.5v2.5a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2.5"></path>
+                    </svg>
+
+                </div>
+
+                <h2 class="text-lg font-semibold text-slate-800">
+                    Arraste suas imagens aqui
+                </h2>
+
+                <p class="text-sm text-slate-500 mt-1">
+                    ou clique para selecionar várias imagens
+                </p>
+
+                <p class="text-xs text-slate-400 mt-3">
+                    PNG, JPG/JPEG e WebP
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             PAINEL DE IMAGENS
+        ====================================================== -->
+
+        <section class="mt-6">
+
+            <div
+                class="
+                    flex flex-col md:flex-row
+                    md:items-center md:justify-between
+                    gap-3 mb-4
+                "
+            >
+
+                <div>
+
+                    <h2 class="font-semibold text-slate-800">
+                        Imagens
+                    </h2>
+
+                    <p class="text-sm text-slate-500">
+                        Configure cada imagem individualmente.
+                    </p>
+
+                </div>
+
+                <!-- Ações em lote -->
+                <div
+                    id="batchControls"
+                    class="
+                        hidden
+                        flex flex-wrap
+                        items-center
+                        gap-2
+                    "
+                >
+
+                    <button
+                        id="applySizeButton"
+                        type="button"
+                        class="
+                            px-3 py-2
+                            rounded-lg
+                            bg-slate-800
+                            text-white
+                            text-sm
+                            hover:bg-slate-700
+                        "
+                    >
+                        Aplicar tamanho a todas
+                    </button>
+
+                    <button
+                        id="removeBordersButton"
+                        type="button"
+                        class="
+                            px-3 py-2
+                            rounded-lg
+                            bg-slate-100
+                            text-slate-700
+                            text-sm
+                            hover:bg-slate-200
+                        "
+                    >
+                        Remover bordas
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Campo usado pelo tamanho em lote -->
+            <div
+                id="batchSizePanel"
+                class="
+                    hidden
+                    mb-4
+                    bg-white
+                    border border-slate-200
+                    rounded-xl
+                    p-4
+                "
+            >
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+
+                    <label class="text-sm">
+                        <span class="block text-slate-500 mb-1">
+                            Largura
+                        </span>
+
+                        <input
+                            id="batchWidth"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value="5"
+                            class="
+                                w-full
+                                px-3 py-2
+                                rounded-lg
+                                border border-slate-300
+                            "
+                        >
+                    </label>
+
+                    <label class="text-sm">
+                        <span class="block text-slate-500 mb-1">
+                            Altura
+                        </span>
+
+                        <input
+                            id="batchHeight"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value="5"
+                            class="
+                                w-full
+                                px-3 py-2
+                                rounded-lg
+                                border border-slate-300
+                            "
+                        >
+                    </label>
+
+                    <label class="text-sm">
+                        <span class="block text-slate-500 mb-1">
+                            Unidade
+                        </span>
+
+                        <select
+                            id="batchUnit"
+                            class="
+                                w-full
+                                px-3 py-2
+                                rounded-lg
+                                border border-slate-300
+                            "
+                        >
+                            <option value="cm">cm</option>
+                            <option value="mm">mm</option>
+                            <option value="px">px</option>
+                        </select>
+                    </label>
+
+                </div>
+
+            </div>
+
+
+            <!-- Lista -->
+            <div
+                id="imageList"
+                class="space-y-4"
+            ></div>
+
+        </section>
+
+
+        <!-- =====================================================
+             PREVIEW
+        ====================================================== -->
+
+        <section class="mt-10">
+
+            <div class="mb-4">
+
+                <h2 class="font-semibold text-slate-800">
+                    Pré-visualização
+                </h2>
+
+                <p class="text-sm text-slate-500">
+                    Simulação da área útil de uma folha A4.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================================================
+         ÁREA DE IMPRESSÃO / PREVIEW
+    ========================================================= -->
+
+    <section
+        id="previewArea"
+        class="px-4 pb-32"
+    ></section>
+
+
+    <!-- =========================================================
+         BOTÃO FLUTUANTE DE IMPRESSÃO
+    ========================================================= -->
+
+    <button
+        id="printButton"
+        type="button"
+        class="
+            no-print
+            print-floating-button
+            flex items-center gap-2
+            px-5 py-3
+            rounded-full
+            bg-blue-600
+            text-white
+            font-semibold
+            hover:bg-blue-700
+            active:scale-95
+            transition
+        "
+    >
+
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+        >
+            <polyline points="6 9 6 2 18 2 18 9"></polyline>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+            <rect x="6" y="14" width="12" height="8"></rect>
+        </svg>
+
+        Imprimir / Salvar como PDF
+
+    </button>
+
+
+    <!-- =========================================================
+         JAVASCRIPT
+    ========================================================= -->
+
+    <script>
+
+        /* =======================================================
+           ESTADO DA APLICAÇÃO
+        ======================================================= */
+
+        const state = {
+
+            images: [],
+
+            nextId: 1
+
+        };
+
+
+        /* =======================================================
+           ELEMENTOS
+        ======================================================= */
+
+        const fileInput = document.getElementById("fileInput");
+        const dropzone = document.getElementById("dropzone");
+        const imageList = document.getElementById("imageList");
+        const previewArea = document.getElementById("previewArea");
+        const imageCounter = document.getElementById("imageCounter");
+        const clearAllButton = document.getElementById("clearAllButton");
+        const batchControls = document.getElementById("batchControls");
+        const batchSizePanel = document.getElementById("batchSizePanel");
+        const printButton = document.getElementById("printButton");
+
+
+        /* =======================================================
+           CONVERSÃO DE UNIDADES
+           
+           O navegador trabalha com:
+           
+           96 px = 1 polegada
+           1 polegada = 2,54 cm
+           
+           Portanto:
+           
+           1 cm ≈ 37,7952756 px
+        ======================================================= */
+
+        const PX_PER_CM = 96 / 2.54;
+
+
+        function toCm(value, unit) {
+
+            value = Number(value) || 0;
+
+            if (unit === "cm") {
+                return value;
+            }
+
+            if (unit === "mm") {
+                return value / 10;
+            }
+
+            if (unit === "px") {
+                return value / PX_PER_CM;
+            }
+
+            return value;
+        }
+
+
+        function fromCm(value, unit) {
+
+            value = Number(value) || 0;
+
+            if (unit === "cm") {
+                return value;
+            }
+
+            if (unit === "mm") {
+                return value * 10;
+            }
+
+            if (unit === "px") {
+                return value * PX_PER_CM;
+            }
+
+            return value;
+        }
+
+
+        function cssSize(value, unit) {
+
+            return `${Number(value)}${unit}`;
+
+        }
+
+
+        /* =======================================================
+           FORMATAÇÃO
+        ======================================================= */
+
+        function roundNumber(number, decimals = 2) {
+
+            return Number(
+                Number(number).toFixed(decimals)
+            );
+
+        }
+
+
+        function formatFileSize(bytes) {
+
+            if (bytes < 1024) {
+                return `${bytes} B`;
+            }
+
+            if (bytes < 1024 * 1024) {
+                return `${(bytes / 1024).toFixed(1)} KB`;
+            }
+
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+        }
+
+
+        /* =======================================================
+           ADICIONAR ARQUIVOS
+        ======================================================= */
+
+        function addFiles(files) {
+
+            const validTypes = [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+            ];
+
+            [...files].forEach(file => {
+
+                if (!validTypes.includes(file.type)) {
+                    return;
+                }
+
+                const objectUrl = URL.createObjectURL(file);
+
+                const image = new Image();
+
+                image.onload = () => {
+
+                    /*
+                     * Tamanho inicial:
+                     *
+                     * 5 cm de largura
+                     * altura calculada pela proporção original
+                     */
+
+                    const initialWidthCm = 5;
+
+                    const ratio =
+                        image.naturalHeight /
+                        image.naturalWidth;
+
+                    const initialHeightCm =
+                        initialWidthCm * ratio;
+
+                    state.images.push({
+
+                        id: state.nextId++,
+
+                        file,
+
+                        url: objectUrl,
+
+                        naturalWidth: image.naturalWidth,
+
+                        naturalHeight: image.naturalHeight,
+
+                        width: roundNumber(initialWidthCm),
+
+                        height: roundNumber(initialHeightCm),
+
+                        unit: "cm",
+
+                        lockRatio: true,
+
+                        border: false,
+
+                        borderWidth: "1px",
+
+                        borderColor: "#000000"
+
+                    });
+
+                    render();
+
+                };
+
+                image.src = objectUrl;
+
+            });
+
+        }
+
+
+        /* =======================================================
+           DROPZONE
+        ======================================================= */
+
+        dropzone.addEventListener("click", () => {
+
+            fileInput.click();
+
+        });
+
+
+        fileInput.addEventListener("change", event => {
+
+            addFiles(event.target.files);
+
+            /*
+             * Permite selecionar novamente o mesmo arquivo
+             * depois de removê-lo.
+             */
+            fileInput.value = "";
+
+        });
+
+
+        [
+            "dragenter",
+            "dragover"
+        ].forEach(eventName => {
+
+            dropzone.addEventListener(eventName, event => {
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                dropzone.classList.add("dragover");
+
+            });
+
+        });
+
+
+        [
+            "dragleave",
+            "drop"
+        ].forEach(eventName => {
+
+            dropzone.addEventListener(eventName, event => {
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                dropzone.classList.remove("dragover");
+
+            });
+
+        });
+
+
+        dropzone.addEventListener("drop", event => {
+
+            addFiles(event.dataTransfer.files);
+
+        });
+
+
+        /* =======================================================
+           ATUALIZAR IMAGEM
+        ======================================================= */
+
+        function updateImage(id, changes) {
+
+            const image = state.images.find(
+                item => item.id === id
+            );
+
+            if (!image) {
+                return;
+            }
+
+            Object.assign(image, changes);
+
+            render();
+
+        }
+
+
+        /* =======================================================
+           EXCLUIR
+        ======================================================= */
+
+        function removeImage(id) {
+
+            const index = state.images.findIndex(
+                item => item.id === id
+            );
+
+            if (index === -1) {
+                return;
+            }
+
+            URL.revokeObjectURL(
+                state.images[index].url
+            );
+
+            state.images.splice(index, 1);
+
+            render();
+
+        }
+
+
+        /* =======================================================
+           MOVER IMAGEM
+        ======================================================= */
+
+        function moveImage(id, direction) {
+
+            const index = state.images.findIndex(
+                item => item.id === id
+            );
+
+            if (index === -1) {
+                return;
+            }
+
+            const newIndex =
+                index + direction;
+
+            if (
+                newIndex < 0 ||
+                newIndex >= state.images.length
+            ) {
+                return;
+            }
+
+            [
+                state.images[index],
+                state.images[newIndex]
+            ] = [
+                state.images[newIndex],
+                state.images[index]
+            ];
+
+            render();
+
+        }
+
+
+        /* =======================================================
+           CÁLCULO DA ALTURA PROPORCIONAL
+        ======================================================= */
+
+        function calculateHeight(image, newWidth) {
+
+            const ratio =
+                image.naturalHeight /
+                image.naturalWidth;
+
+            return newWidth * ratio;
+
+        }
+
+
+        /* =======================================================
+           RENDER DA LISTA
+        ======================================================= */
+
+        function renderImageList() {
+
+            imageList.innerHTML = "";
+
+            state.images.forEach((image, index) => {
+
+                const card =
+                    document.createElement("article");
+
+                card.className = `
+                    bg-white
+                    border border-slate-200
+                    rounded-2xl
+                    p-4
+                    shadow-sm
+                `;
+
+                card.innerHTML = `
+
+                    <div class="
+                        flex flex-col
+                        lg:flex-row
+                        gap-4
+                    ">
+
+                        <!-- Miniatura -->
+
+                        <div class="
+                            flex
+                            items-center
+                            justify-center
+                            shrink-0
+                        ">
+
+                            <img
+                                src="${image.url}"
+                                class="thumbnail border border-slate-200"
+                                alt="${escapeHtml(image.file.name)}"
+                            >
+
+                        </div>
+
+
+                        <!-- Informações -->
+
+                        <div class="flex-1 min-w-0">
+
+                            <div class="
+                                flex
+                                flex-col
+                                sm:flex-row
+                                sm:items-start
+                                sm:justify-between
+                                gap-2
+                            ">
+
+                                <div class="min-w-0">
+
+                                    <h3
+                                        class="font-semibold text-slate-800 truncate"
+                                        title="${escapeHtml(image.file.name)}"
+                                    >
+                                        ${escapeHtml(image.file.name)}
+                                    </h3>
+
+                                    <p class="text-xs text-slate-400">
+                                        ${image.naturalWidth} × ${image.naturalHeight}px
+                                        · ${formatFileSize(image.file.size)}
+                                    </p>
+
+                                </div>
+
+                                <span class="
+                                    text-xs
+                                    bg-slate-100
+                                    text-slate-600
+                                    px-2 py-1
+                                    rounded-full
+                                    shrink-0
+                                ">
+                                    #${index + 1}
+                                </span>
+
+                            </div>
+
+
+                            <!-- CONTROLES -->
+
+                            <div class="
+                                grid
+                                grid-cols-2
+                                md:grid-cols-4
+                                gap-3
+                                mt-4
+                            ">
+
+                                <!-- Largura -->
+
+                                <label class="text-sm">
+
+                                    <span class="
+                                        block
+                                        text-xs
+                                        text-slate-500
+                                        mb-1
+                                    ">
+                                        Largura
+                                    </span>
+
+                                    <input
+                                        data-action="width"
+                                        data-id="${image.id}"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        value="${image.width}"
+                                        class="
+                                            w-full
+                                            px-3 py-2
+                                            rounded-lg
+                                            border
+                                            border-slate-300
+                                            focus:border-blue-500
+                                            focus:ring-2
+                                            focus:ring-blue-100
+                                            outline-none
+                                        "
+                                    >
+
+                                </label>
+
+
+                                <!-- Altura -->
+
+                                <label class="text-sm">
+
+                                    <span class="
+                                        block
+                                        text-xs
+                                        text-slate-500
+                                        mb-1
+                                    ">
+                                        Altura
+                                    </span>
+
+                                    <input
+                                        data-action="height"
+                                        data-id="${image.id}"
+                                        type="number"
+                                        min="0.1"
+                                        step="0.1"
+                                        value="${image.height}"
+                                        class="
+                                            w-full
+                                            px-3 py-2
+                                            rounded-lg
+                                            border
+                                            border-slate-300
+                                            focus:border-blue-500
+                                            focus:ring-2
+                                            focus:ring-blue-100
+                                            outline-none
+                                        "
+                                    >
+
+                                </label>
+
+
+                                <!-- Unidade -->
+
+                                <label class="text-sm">
+
+                                    <span class="
+                                        block
+                                        text-xs
+                                        text-slate-500
+                                        mb-1
+                                    ">
+                                        Unidade
+                                    </span>
+
+                                    <select
+                                        data-action="unit"
+                                        data-id="${image.id}"
+                                        class="
+                                            w-full
+                                            px-3 py-2
+                                            rounded-lg
+                                            border
+                                            border-slate-300
+                                            bg-white
+                                        "
+                                    >
+
+                                        <option
+                                            value="cm"
+                                            ${image.unit === "cm" ? "selected" : ""}
+                                        >
+                                            cm
+                                        </option>
+
+                                        <option
+                                            value="mm"
+                                            ${image.unit === "mm" ? "selected" : ""}
+                                        >
+                                            mm
+                                        </option>
+
+                                        <option
+                                            value="px"
+                                            ${image.unit === "px" ? "selected" : ""}
+                                        >
+                                            px
+                                        </option>
+
+                                    </select>
+
+                                </label>
+
+
+                                <!-- Proporção -->
+
+                                <label class="
+                                    flex
+                                    items-end
+                                    pb-2
+                                    gap-2
+                                    text-sm
+                                ">
+
+                                    <input
+                                        data-action="ratio"
+                                        data-id="${image.id}"
+                                        type="checkbox"
+                                        ${image.lockRatio ? "checked" : ""}
+                                        class="
+                                            w-4 h-4
+                                            accent-blue-600
+                                        "
+                                    >
+
+                                    <span>
+                                        Manter proporção
+                                    </span>
+
+                                </label>
+
+                            </div>
+
+
+                            <!-- BORDAS -->
+
+                            <div class="
+                                mt-4
+                                p-3
+                                rounded-xl
+                                bg-slate-50
+                                border border-slate-200
+                            ">
+
+                                <div class="
+                                    flex
+                                    flex-wrap
+                                    items-center
+                                    gap-4
+                                ">
+
+                                    <label class="
+                                        flex
+                                        items-center
+                                        gap-2
+                                        text-sm
+                                    ">
+
+                                        <input
+                                            data-action="border"
+                                            data-id="${image.id}"
+                                            type="checkbox"
+                                            ${image.border ? "checked" : ""}
+                                            class="w-4 h-4 accent-blue-600"
+                                        >
+
+                                        <span>
+                                            Borda
+                                        </span>
+
+                                    </label>
+
+
+                                    <label class="text-sm">
+
+                                        <span class="text-slate-500 mr-1">
+                                            Espessura
+                                        </span>
+
+                                        <select
+                                            data-action="borderWidth"
+                                            data-id="${image.id}"
+                                            class="
+                                                px-2 py-1
+                                                rounded-md
+                                                border
+                                                border-slate-300
+                                                bg-white
+                                            "
+                                        >
+
+                                            <option
+                                                value="1px"
+                                                ${image.borderWidth === "1px" ? "selected" : ""}
+                                            >
+                                                Fina
+                                            </option>
+
+                                            <option
+                                                value="2px"
+                                                ${image.borderWidth === "2px" ? "selected" : ""}
+                                            >
+                                                Média
+                                            </option>
+
+                                            <option
+                                                value="4px"
+                                                ${image.borderWidth === "4px" ? "selected" : ""}
+                                            >
+                                                Grossa
+                                            </option>
+
+                                        </select>
+
+                                    </label>
+
+
+                                    <label class="
+                                        flex
+                                        items-center
+                                        gap-2
+                                        text-sm
+                                    ">
+
+                                        <span class="text-slate-500">
+                                            Cor
+                                        </span>
+
+                                        <input
+                                            data-action="borderColor"
+                                            data-id="${image.id}"
+                                            type="color"
+                                            value="${image.borderColor}"
+                                            class="
+                                                w-9 h-8
+                                                rounded
+                                                border
+                                                border-slate-300
+                                                cursor-pointer
+                                            "
+                                        >
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+
+                            <!-- AÇÕES -->
+
+                            <div class="
+                                flex
+                                flex-wrap
+                                items-center
+                                gap-2
+                                mt-4
+                            ">
+
+                                <button
+                                    data-action="up"
+                                    data-id="${image.id}"
+                                    type="button"
+                                    class="
+                                        px-3 py-2
+                                        rounded-lg
+                                        bg-slate-100
+                                        hover:bg-slate-200
+                                        text-sm
+                                    "
+                                    title="Mover para cima"
+                                >
+                                    ↑ Subir
+                                </button>
+
+                                <button
+                                    data-action="down"
+                                    data-id="${image.id}"
+                                    type="button"
+                                    class="
+                                        px-3 py-2
+                                        rounded-lg
+                                        bg-slate-100
+                                        hover:bg-slate-200
+                                        text-sm
+                                    "
+                                    title="Mover para baixo"
+                                >
+                                    ↓ Descer
+                                </button>
+
+                                <button
+                                    data-action="remove"
+                                    data-id="${image.id}"
+                                    type="button"
+                                    class="
+                                        px-3 py-2
+                                        rounded-lg
+                                        bg-red-50
+                                        text-red-600
+                                        hover:bg-red-100
+                                        text-sm
+                                    "
+                                >
+                                    Excluir
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                `;
+
+                imageList.appendChild(card);
+
+            });
+
+        }
+
+
+        /* =======================================================
+           ESCAPE HTML
+        ======================================================= */
+
+        function escapeHtml(text) {
+
+            const div = document.createElement("div");
+
+            div.textContent = text;
+
+            return div.innerHTML;
+
+        }
+
+
+        /* =======================================================
+           RENDER DO PREVIEW
+        ======================================================= */
+
+        function renderPreview() {
+
+            previewArea.innerHTML = "";
+
+            if (state.images.length === 0) {
+
+                previewArea.innerHTML = `
+
+                    <div class="
+                        w-full
+                        max-w-2xl
+                        mx-auto
+                        bg-white
+                        rounded-2xl
+                        border
+                        border-slate-200
+                        p-10
+                        text-center
+                        text-slate-400
+                    ">
+
+                        Nenhuma imagem adicionada.
+
+                    </div>
+
+                `;
+
+                return;
+
+            }
+
+
+            /*
+             * Área útil A4:
+             *
+             * 18 cm x 26,7 cm
+             */
+
+            const PAGE_WIDTH = 18;
+            const PAGE_HEIGHT = 26.7;
+
+
+            let currentSheet = null;
+            let currentContent = null;
+
+            let currentX = 0;
+            let currentY = 0;
+
+            let currentRowHeight = 0;
+
+
+            function createSheet() {
+
+                const sheet =
+                    document.createElement("div");
+
+                sheet.className = "print-sheet";
+
+                const content =
+                    document.createElement("div");
+
+                content.className = "sheet-content";
+
+                sheet.appendChild(content);
+
+                previewArea.appendChild(sheet);
+
+                currentSheet = sheet;
+                currentContent = content;
+
+                currentX = 0;
+                currentY = 0;
+                currentRowHeight = 0;
+
+            }
+
+
+            createSheet();
+
+
+            state.images.forEach(image => {
+
+                const widthCm =
+                    toCm(image.width, image.unit);
+
+                const heightCm =
+                    toCm(image.height, image.unit);
+
+
+                /*
+                 * Se a imagem for maior que a área útil,
+                 * ainda permitimos sua criação, mas ela será
+                 * reduzida visualmente para não sair da página.
+                 *
+                 * A dimensão configurada continua sendo usada
+                 * no modo normal; aqui apenas evitamos quebrar
+                 * a simulação visual.
+                 */
+
+                if (
+                    widthCm > PAGE_WIDTH ||
+                    heightCm > PAGE_HEIGHT
+                ) {
+
+                    console.warn(
+                        `Imagem "${image.file.name}" excede a área útil A4.`
+                    );
+
+                }
+
+
+                /*
+                 * Quebra de linha:
+                 *
+                 * Se não couber horizontalmente,
+                 * começamos uma nova linha.
+                 */
+
+                if (
+                    currentX > 0 &&
+                    currentX + widthCm > PAGE_WIDTH
+                ) {
+
+                    currentX = 0;
+
+                    currentY += currentRowHeight;
+
+                    currentRowHeight = 0;
+
+                }
+
+
+                /*
+                 * Se não couber verticalmente,
+                 * criamos uma nova página.
+                 */
+
+                if (
+                    currentY > 0 &&
+                    currentY + heightCm > PAGE_HEIGHT
+                ) {
+
+                    createSheet();
+
+                }
+
+
+                /*
+                 * Caso a imagem individualmente seja maior
+                 * que a página, colocamos em uma nova página.
+                 */
+
+                if (
+                    currentX === 0 &&
+                    currentY === 0 &&
+                    (
+                        widthCm > PAGE_WIDTH ||
+                        heightCm > PAGE_HEIGHT
+                    )
+                ) {
+
+                    /*
+                     * Não alteramos os valores configurados.
+                     * O usuário será alertado visualmente.
+                     */
+
+                }
+
+
+                const item =
+                    document.createElement("div");
+
+                item.className = "print-item";
+
+                /*
+                 * IMPORTANTE:
+                 *
+                 * Usamos a unidade original para que cm/mm/px
+                 * mantenham comportamento físico consistente.
+                 */
+
+                item.style.width =
+                    cssSize(image.width, image.unit);
+
+                item.style.height =
+                    cssSize(image.height, image.unit);
+
+                /*
+                 * A borda faz parte do tamanho total
+                 * porque usamos border-box.
+                 */
+
+                item.style.boxSizing = "border-box";
+
+                if (image.border) {
+
+                    item.style.border =
+                        `${image.borderWidth} solid ${image.borderColor}`;
+
+                } else {
+
+                    item.style.border = "none";
+
+                }
+
+
+                const img =
+                    document.createElement("img");
+
+                img.src = image.url;
+
+                img.alt = image.file.name;
+
+                item.appendChild(img);
+
+                /*
+                 * Para o posicionamento:
+                 *
+                 * usamos margens negativas? Não.
+                 *
+                 * O flexbox cuida da posição naturalmente.
+                 */
+
+                currentContent.appendChild(item);
+
+
+                /*
+                 * Atualiza posição lógica.
+                 */
+
+                currentX += widthCm;
+
+                currentRowHeight =
+                    Math.max(
+                        currentRowHeight,
+                        heightCm
+                    );
+
+            });
+
+        }
+
+
+        /* =======================================================
+           RENDER GERAL
+        ======================================================= */
+
+        function render() {
+
+            renderImageList();
+
+            renderPreview();
+
+            updateInterfaceState();
+
+        }
+
+
+        /* =======================================================
+           ATUALIZA CONTADORES E BOTÕES
+        ======================================================= */
+
+        function updateInterfaceState() {
+
+            const count = state.images.length;
+
+            imageCounter.textContent =
+                `${count} ${count === 1 ? "imagem" : "imagens"}`;
+
+            if (count > 0) {
+
+                clearAllButton.classList.remove("hidden");
+
+                batchControls.classList.remove("hidden");
+
+            } else {
+
+                clearAllButton.classList.add("hidden");
+
+                batchControls.classList.add("hidden");
+
+                batchSizePanel.classList.add("hidden");
+
+            }
+
+        }
+
+
+        /* =======================================================
+           EVENTOS DOS CONTROLES
+        ======================================================= */
+
+        imageList.addEventListener("change", event => {
+
+            const element = event.target;
+
+            const action =
+                element.dataset.action;
+
+            const id =
+                Number(element.dataset.id);
+
+            const image =
+                state.images.find(
+                    item => item.id === id
+                );
+
+            if (!image) {
+                return;
+            }
+
+
+            /* LARGURA */
+
+            if (action === "width") {
+
+                const newWidth =
+                    Number(element.value);
+
+                image.width = newWidth;
+
+                if (image.lockRatio) {
+
+                    image.height =
+                        roundNumber(
+                            calculateHeight(
+                                image,
+                                newWidth
+                            )
+                        );
+
+                }
+
+            }
+
+
+            /* ALTURA */
+
+            if (action === "height") {
+
+                const newHeight =
+                    Number(element.value);
+
+                image.height = newHeight;
+
+                if (image.lockRatio) {
+
+                    const ratio =
+                        image.naturalWidth /
+                        image.naturalHeight;
+
+                    image.width =
+                        roundNumber(
+                            newHeight * ratio
+                        );
+
+                }
+
+            }
+
+
+            /* UNIDADE */
+
+            if (action === "unit") {
+
+                const oldUnit =
+                    image.unit;
+
+                const newUnit =
+                    element.value;
+
+                /*
+                 * Converte o tamanho para cm
+                 * e depois para a nova unidade.
+                 *
+                 * Assim 5 cm -> 50 mm
+                 * em vez de simplesmente trocar o texto.
+                 */
+
+                const widthCm =
+                    toCm(
+                        image.width,
+                        oldUnit
+                    );
+
+                const heightCm =
+                    toCm(
+                        image.height,
+                        oldUnit
+                    );
+
+                image.width =
+                    roundNumber(
+                        fromCm(
+                            widthCm,
+                            newUnit
+                        )
+                    );
+
+                image.height =
+                    roundNumber(
+                        fromCm(
+                            heightCm,
+                            newUnit
+                        )
+                    );
+
+                image.unit = newUnit;
+
+            }
+
+
+            /* PROPORÇÃO */
+
+            if (action === "ratio") {
+
+                image.lockRatio =
+                    element.checked;
+
+            }
+
+
+            /* BORDA */
+
+            if (action === "border") {
+
+                image.border =
+                    element.checked;
+
+            }
+
+
+            /* ESPESSURA */
+
+            if (action === "borderWidth") {
+
+                image.borderWidth =
+                    element.value;
+
+            }
+
+
+            /* COR */
+
+            if (action === "borderColor") {
+
+                image.borderColor =
+                    element.value;
+
+            }
+
+
+            render();
+
+        });
+
+
+        /* =======================================================
+           EVENTOS DOS BOTÕES
+        ======================================================= */
+
+        imageList.addEventListener("click", event => {
+
+            const button =
+                event.target.closest("button");
+
+            if (!button) {
+                return;
+            }
+
+            const action =
+                button.dataset.action;
+
+            const id =
+                Number(button.dataset.id);
+
+
+            if (action === "up") {
+
+                moveImage(id, -1);
+
+            }
+
+
+            if (action === "down") {
+
+                moveImage(id, 1);
+
+            }
+
+
+            if (action === "remove") {
+
+                removeImage(id);
+
+            }
+
+        });
+
+
+        /* =======================================================
+           LIMPAR TUDO
+        ======================================================= */
+
+        clearAllButton.addEventListener("click", () => {
+
+            if (state.images.length === 0) {
+                return;
+            }
+
+            const confirmed =
+                confirm(
+                    "Deseja remover todas as imagens?"
+                );
+
+            if (!confirmed) {
+                return;
+            }
+
+            state.images.forEach(image => {
+
+                URL.revokeObjectURL(image.url);
+
+            });
+
+            state.images = [];
+
+            render();
+
+        });
+
+
+        /* =======================================================
+           TAMANHO EM LOTE
+        ======================================================= */
+
+        document
+            .getElementById("applySizeButton")
+            .addEventListener("click", () => {
+
+                const width =
+                    Number(
+                        document.getElementById(
+                            "batchWidth"
+                        ).value
+                    );
+
+                const height =
+                    Number(
+                        document.getElementById(
+                            "batchHeight"
+                        ).value
+                    );
+
+                const unit =
+                    document.getElementById(
+                        "batchUnit"
+                    ).value;
+
+
+                if (
+                    !width ||
+                    !height ||
+                    width <= 0 ||
+                    height <= 0
+                ) {
+
+                    return;
+
+                }
+
+
+                state.images.forEach(image => {
+
+                    image.width = width;
+                    image.height = height;
+                    image.unit = unit;
+
+                });
+
+                render();
+
+            });
+
+
+        document
+            .getElementById("removeBordersButton")
+            .addEventListener("click", () => {
+
+                state.images.forEach(image => {
+
+                    image.border = false;
+
+                });
+
+                render();
+
+            });
+
+
+        /*
+         * Exibe/esconde o painel de tamanho em lote.
+         */
+
+        batchControls
+            .querySelector("#applySizeButton")
+            .addEventListener("dblclick", () => {
+
+                batchSizePanel.classList.toggle("hidden");
+
+            });
+
+
+        /*
+         * Clique simples no botão também abre o painel.
+         * O evento acima será substituído por esta lógica
+         * para tornar a utilização mais intuitiva.
+         */
+
+        document
+            .getElementById("applySizeButton")
+            .addEventListener("click", () => {
+
+                batchSizePanel.classList.remove("hidden");
+
+            });
+
+
+        /* =======================================================
+           IMPRESSÃO
+        ======================================================= */
+
+        printButton.addEventListener("click", () => {
+
+            if (state.images.length === 0) {
+
+                alert(
+                    "Adicione pelo menos uma imagem antes de imprimir."
+                );
+
+                return;
+
+            }
+
+            /*
+             * Abre a caixa de impressão nativa.
+             *
+             * No Chrome/Edge:
+             *
+             * Destino → Salvar como PDF
+             *
+             * É recomendável:
+             *
+             * - Papel: A4
+             * - Orientação: Retrato
+             * - Margens: Padrão
+             * - Escala: 100%
+             *
+             * O @page já define as margens de 1,5 cm.
+             */
+
+            window.print();
+
+        });
+
+
+        /* =======================================================
+           INICIALIZAÇÃO
+        ======================================================= */
+
+        render();
+
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mapas",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["C:/Users/IGORWO~1/AppData/Local/Temp/claude/C--Users-Igor-Work-OneDrive-Documentos-GitHub-quadro-quadro-mapas/f250c531-a175-497a-81ab-7f34455ab091/scratchpad/nocache_server.py", "5174"],
+      "port": 5174
+    }
+  ]
+}

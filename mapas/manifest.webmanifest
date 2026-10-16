@@ -1,0 +1,14 @@
+{
+  "name": "Mapas de Território",
+  "short_name": "Mapas",
+  "description": "Desenhe cartões de território sobre o mapa e exporte para imprimir ou compartilhar.",
+  "lang": "pt-BR",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#eef1f6",
+  "theme_color": "#1f3b6e",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

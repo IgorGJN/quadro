@@ -1,128 +1,73 @@
-# Editor Offline de Territórios
+# Mapas de Território
 
-Editor offline para criar mapas de territórios sobre uma imagem/print do mapa. Não usa servidor, API de mapa ou internet depois de aberto.
+Editor de cartões de território: escolha a base do mapa, desenhe ruas, áreas e referências por cima e exporte o cartão para imprimir ou compartilhar. Funciona no computador e no celular, sem servidor e sem conta.
 
-## Como abrir
+## Como usar
 
-1. Descompacte o arquivo `.zip`.
-2. Abra `index.html` no navegador.
-3. Clique em **Mapa** para carregar o print/imagem base.
-4. Use **Salvar local** para guardar no navegador ou **Baixar JSON** para criar uma cópia de segurança.
+1. Abra `index.html` (ou a página publicada no GitHub Pages).
+2. Escolha a base do mapa:
+   - **Buscar no mapa**: procure o endereço e capture a região do OpenStreetMap (precisa de internet);
+   - **Usar um print**: imagem do Google Maps, foto ou captura de tela. Também dá para **colar com Ctrl+V** ou **arrastar o arquivo** para a tela;
+   - **Em branco**: desenhar sem mapa de fundo.
+3. Desenhe com as ferramentas e exporte pelo botão **Exportar**.
+
+O mapa é salvo automaticamente neste navegador. Em **Meus mapas** (ícone de pasta) ficam todos os mapas, com miniatura.
+
+## Conceitos
+
+- **Cartão**: o retângulo com o rótulo "14 × 5,8 cm" é exatamente o que será exportado e impresso. O zoom do editor não muda a exportação. Use a ferramenta **Cartão** para mover ou redimensionar o retângulo, ou troque o formato (A4, A5, quadrado…) na aba **Mapa**.
+- **Junções**: ruas e áreas compartilham pontos reais. Ao desenhar perto de um ponto ou de uma rua, o ponto encaixa. Ao concluir uma rua, os cruzamentos viram junções automaticamente. Para conectar dois pontos, solte um sobre o outro. Pontos verdes são junções.
 
 ## Ferramentas
 
-### Selecionar
-- Seleciona e move itens.
-- Em ruas/áreas, os pontos aparecem como nós.
-- Arrastar área vazia move o mapa.
+| Ferramenta | Atalho | Como usar |
+|---|---|---|
+| Selecionar | V | Toque para selecionar e arraste para mover. Em ruas e áreas, arraste os pontos e use os pontos menores do meio para criar curvas. |
+| Mover | H ou Espaço | Move o mapa. A roda do mouse ou dois dedos dão zoom. |
+| Rua | R | Toque ponto a ponto. Enter, duplo clique ou um toque no último ponto concluem. Shift trava ângulos de 15°; Alt desliga o encaixe. |
+| Área | A | Contorna o território. Toque no primeiro ponto para fechar. |
+| Texto | T | Nomes, números de casas e observações, com rotação pela alça. |
+| Ponto | P | Referências (escola, igreja, comércio, "não visitar"…), com rótulo. |
+| Foco | F | Destaca uma região e clareia o restante (retângulo ou oval). |
+| Norte | N | Seta do norte com rotação. |
+| Legenda | L | Montada automaticamente a partir das áreas, ruas e pontos do mapa, com linhas extras opcionais. |
+| Cartão | C | Ajusta a área exportada. |
 
-### Editar pts
-- Selecione uma rua ou área.
-- Toque/arraste um nó para mover aquele ponto.
-- Toque em um segmento para inserir um novo ponto no meio da rua/área.
-- Use **Remover ponto** para apagar o ponto selecionado.
-- Use **Dividir rua** em um ponto intermediário para cortar uma rua em duas.
+Outros atalhos: Ctrl+Z / Ctrl+Shift+Z (desfazer/refazer), Delete (excluir item ou ponto), Ctrl+D (duplicar), setas (mover; Shift = 10×), Ctrl+S (salvar versão), 0 (ver o cartão inteiro), ? (lista de atalhos).
 
-### Conectar
-- Toque em um nó de uma rua.
-- Toque em outro nó.
-- Os dois passam a ser uma junção real compartilhada.
-- Nós verdes indicam conexão real entre duas ou mais ruas/áreas.
-- O número acima do nó mostra quantos pontos estão conectados ali.
+## Exportar
 
-### Rua
-- Toque ponto por ponto.
-- Use **Concluir rua** ou dê duplo clique para finalizar.
-- Se tocar perto de um nó, a rua encaixa nele.
-- Se tocar perto de um segmento de rua existente, o editor cria um nó naquele segmento e conecta nele.
+- **Imagem PNG** em 2800 px ou em alta resolução;
+- **Copiar imagem** para colar no WhatsApp, num documento ou num e-mail;
+- **Compartilhar** (no celular);
+- **Imprimir no tamanho real** do formato escolhido (ex.: 14 × 5,8 cm);
+- **Backup (.json)**: arquivo completo com a imagem, para guardar ou abrir em outro aparelho.
 
-### Área
-- Cria polígonos e territórios côncavos/irregulares.
-- Também encaixa em nós e segmentos próximos.
+## Salvamento e versões
 
-### Foco
-- Cria máscara externa: a área interna fica limpa e o lado de fora fica esbranquiçado.
-- Pode ser retangular ou circular/oval.
-- Use **Centralizar foco** para aproximar o mapa da área marcada.
+- Os mapas ficam no IndexedDB do navegador, sem o limite de ~5 MB do `localStorage`.
+- Uma **versão** é criada a cada 10 minutos de edição, e você pode salvar versões nomeadas. Restaure pela aba **Mapa**.
+- Os mapas salvos pela versão anterior do editor são importados automaticamente na primeira abertura. Arquivos `.json` antigos também abrem normalmente.
+- Os dados ficam só neste navegador. Para trocar de aparelho, use o backup `.json`.
 
-### Nome/Nº
-- Insere nomes de ruas, números e observações como texto separado da rua.
-- Permite rotação, tamanho, cor e borda.
-
-### Ponto
-- Insere referência com ícone e texto.
-
-### Norte
-- Insere bússola com rotação e tamanho.
-
-### Legenda
-- Insere uma legenda editável.
-- Selecione a legenda e edite o texto no painel. Cada linha vira uma linha da legenda.
-
-## Melhorias principais desta versão
-
-- Projeto separado em arquivos.
-- Modelo de junção com nós reais compartilhados.
-- Nós visíveis e contagem de conexões.
-- Ferramenta manual **Conectar**.
-- Encaixe em nós e segmentos de ruas/áreas existentes.
-- Comando **Criar interseções** para transformar cruzamentos visuais em nós reais.
-- Edição de pontos: mover, inserir, remover e dividir rua.
-- Ruas com largura real, borda, pontas arredondadas e suavização.
-- Áreas/polígonos côncavos.
-- Foco invertido com máscara externa e opção retangular/circular.
-- Texto/número com rotação.
-- Legenda editável em múltiplas linhas.
-- Painel contextual por tipo de item.
-- Camadas agrupadas por tipo, com mostrar/ocultar e bloquear/desbloquear.
-- Salvamento local, JSON, PNG, autosave e versões.
-- Desfazer/refazer.
-
-## Arquivos
+## Estrutura
 
 ```text
-editor-territorios/
-  index.html
-  styles.css
+mapas/
+  index.html            estrutura da página
+  styles.css            visual (tema claro/escuro automático, layout de celular)
+  manifest.webmanifest  instalação como app (PWA)
+  sw.js                 funcionamento offline quando publicado em https
+  icon.svg
   js/
-    utils.js
-    state.js
-    drawing.js
-    storage.js
-    exporter.js
-    ui.js
-    app.js
-  README.md
+    util.js     utilidades e geometria
+    model.js    documento, tipos, histórico (desfazer) e operações com junções
+    render.js   desenho do mapa e testes de clique
+    storage.js  IndexedDB, versões, backup e migração do formato antigo
+    ui.js       ícones, avisos, inspetor, camadas, ajustes e galeria
+    osm.js      captura de mapa do OpenStreetMap (carrega o Leaflet sob demanda)
+    editor.js   ferramentas, gestos (mouse, toque, caneta) e teclado
+    app.js      inicialização, salvamento automático e exportação
 ```
 
-## Observações
-
-- O salvamento local fica no navegador/dispositivo usado.
-- O `localStorage` tem limite. Imagens muito grandes podem impedir salvar localmente.
-- Para backup, use **Baixar JSON**.
-- Para compartilhar o mapa final, use **Exportar PNG**.
-
-
-## Ajuste visual de junção de ruas
-
-As ruas agora são renderizadas em duas passadas: primeiro todas as bordas e depois todos os miolos. Isso evita que a borda de uma rua corte visualmente outra rua conectada. Em nós compartilhados, o editor também aplica um acabamento circular para fechar pequenas falhas nas junções.
-
-## Correção v2.1
-
-Esta versão corrige a incompatibilidade entre `index.html`, `app.js` e `ui.js` que podia gerar erros como:
-
-- `Cannot read properties of null (reading 'addEventListener')`
-- `Cannot set properties of null (setting 'checked')`
-
-Foram adicionados ao `index.html` os controles usados pelo JavaScript:
-
-- Editar nós
-- Conectar
-- Mostrar nós de conexão
-- Mostrar número de conexões
-- Criar interseções reais
-- Remover ponto
-- Dividir rua
-- Visibilidade/bloqueio de camada
-- Formato do foco
-- Versões salvas
+Não há etapa de build: são scripts clássicos, para que o editor abra até com dois cliques no `index.html`. O mapa do OpenStreetMap usa dados © colaboradores do OpenStreetMap, e a atribuição é incluída automaticamente na imagem exportada.

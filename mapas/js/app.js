@@ -1,631 +1,574 @@
+/* Inicialização e ações do aplicativo. */
 (function () {
   'use strict';
 
-  const T = window.Territorios || (window.Territorios = {});
-  const utils = T.utils;
+  const App = window.App;
+  const U = App.util;
+  const M = App.model;
+  const S = App.store;
+  const R = App.render;
+  const UI = App.ui;
+  const ST = App.storage;
+  const E = App.editor;
 
-  document.addEventListener('DOMContentLoaded', init);
+  const VERSION_EVERY = 10 * 60 * 1000;
+  const $ = (id) => document.getElementById(id);
 
-  function init() {
-    T.ui.setup();
-    const canvas = document.getElementById('mapCanvas');
-    const wrap = document.getElementById('canvasWrap');
-    T.drawing.setup(canvas, wrap);
-    if (canvas) bindCanvas(canvas);
-    bindToolbar();
-    bindProjectActions();
-    T.ui.bindPropertyInputs();
-    T.ui.bindSettingsInputs();
-    window.addEventListener('resize', T.drawing.resizeCanvas);
-    T.ui.setTool('select');
-    T.ui.refreshAll();
-    T.drawing.resizeCanvas();
+  let lastVersionAt = Date.now();
+  let dirtySinceVersion = false;
+  let saveErrorShown = false;
+  let uiQueued = false;
+
+  /* ---------- Salvamento automático ---------- */
+
+  const hasContent = (d) => !!(d.base.imageId || d.objects.length || d.name);
+
+  function setStatus(text, error) {
+    const el = $('saveStatus');
+    el.textContent = text;
+    el.classList.toggle('error', !!error);
   }
 
-  function on(el, eventName, handler, options) {
-    if (!el || !el.addEventListener) return;
-    el.addEventListener(eventName, handler, options);
+  function thumbnail(doc) {
+    try { return R.renderFrame(doc, 420).toDataURL('image/jpeg', 0.72); } catch (e) { return null; }
   }
 
-  function bindToolbar() {
-    document.querySelectorAll('[data-tool]').forEach(function (button) {
-      on(button, 'click', function () {
-        T.ui.setTool(button.dataset.tool);
-      });
-    });
-
-    on(T.ui.els.finishRoadBtn, 'click', finishRoad);
-    on(T.ui.els.finishAreaBtn, 'click', finishArea);
-    on(T.ui.els.cancelDrawingBtn, 'click', cancelDrawing);
-
-    on(T.ui.els.deleteBtn, 'click', function () { T.store.deleteSelected(); refreshAfterChange(); T.storage.autoSave(); });
-    on(T.ui.els.duplicateBtn, 'click', function () { T.store.duplicateSelected(); refreshAfterChange(); T.storage.autoSave(); });
-    on(T.ui.els.bringForwardBtn, 'click', function () { T.store.bringForward(); refreshAfterChange(); T.storage.autoSave(); });
-    on(T.ui.els.sendBackwardBtn, 'click', function () { T.store.sendBackward(); refreshAfterChange(); T.storage.autoSave(); });
-
-    on(T.ui.els.toggleVisibleBtn, 'click', function () {
-      const obj = T.store.selectedObject();
-      if (!obj) return;
-      T.store.toggleVisibility(obj.id);
-      refreshAfterChange();
-      T.storage.autoSave();
-    });
-
-    on(T.ui.els.toggleLockBtn, 'click', function () {
-      const obj = T.store.selectedObject();
-      if (!obj) return;
-      T.store.toggleLock(obj.id);
-      refreshAfterChange();
-      T.storage.autoSave();
-    });
-
-    on(T.ui.els.removePointBtn, 'click', function () {
-      if (T.store.removeSelectedPoint()) { refreshAfterChange(); T.storage.autoSave(); }
-    });
-
-    on(T.ui.els.splitRoadBtn, 'click', function () {
-      if (T.store.splitSelectedRoad()) { refreshAfterChange(); T.storage.autoSave(); }
-    });
-
-    on(T.ui.els.createIntersectionsBtn, 'click', function () {
-      const count = T.drawing.createRealIntersections();
-      refreshAfterChange();
-      T.storage.autoSave();
-      alert(count ? count + ' interseção(ões) real(is) criada(s).' : 'Nenhuma interseção nova encontrada.');
-    });
-
-    on(T.ui.els.centerFocusBtn, 'click', function () {
-      const obj = T.store.selectedObject();
-      if (!obj || obj.type !== 'focus') return;
-      centerOnObject(obj);
-    });
-
-    on(T.ui.els.undoBtn, 'click', function () {
-      if (T.store.undo()) reloadImageIfNeeded(false).then(refreshAfterChange);
-    });
-    on(T.ui.els.redoBtn, 'click', function () {
-      if (T.store.redo()) reloadImageIfNeeded(false).then(refreshAfterChange);
-    });
-    on(T.ui.els.fitMapBtn, 'click', fitMap);
-    on(T.ui.els.zoomInBtn, 'click', function () { zoomAtCenter(1.18); });
-    on(T.ui.els.zoomOutBtn, 'click', function () { zoomAtCenter(0.84); });
-    on(T.ui.els.toggleUiBtn, 'click', toggleCleanMode);
-
-    bindMobileTabs();
-  }
-
-  function bindProjectActions() {
-    const els = T.ui.els;
-
-    els.imageInput.addEventListener('change', async function (event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      T.store.pushHistory();
-      const dataUrl = await utils.readFileAsDataUrl(file);
-      await loadImage(dataUrl, true);
-      T.storage.autoSave();
-      T.ui.updateFloatingHelp();
-    });
-
-    els.projectInput.addEventListener('change', async function (event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const text = await utils.readFileAsText(file);
-      const project = JSON.parse(text);
-      T.store.loadProject(project);
-      await reloadImageIfNeeded(true);
-      T.ui.refreshAll();
-      T.drawing.draw();
-    });
-
-    els.downloadJsonBtn.addEventListener('click', function () { T.storage.downloadProject(T.store.currentProject()); });
-
-    els.saveLocalBtn.addEventListener('click', function () {
-      try {
-        const id = T.storage.saveProject(T.store.currentProject());
-        T.storage.saveVersion(T.store.currentProject(), 'salvo manualmente');
-        T.ui.refreshLocalProjects();
-        T.ui.refreshVersions();
-        els.localProjectsSelect.value = id;
-        alert('Mapa salvo neste navegador.');
-      } catch (error) {
-        alert('Não foi possível salvar no navegador. A imagem pode estar muito grande. Use “Baixar JSON” como cópia segura.');
+  async function saveNow() {
+    const doc = S.doc;
+    if (!doc || !hasContent(doc)) return;
+    try {
+      await ST.putProject(doc, thumbnail(doc));
+      ST.setPrefs({ lastProjectId: doc.id });
+      setStatus(ST.isPersistent() ? 'Salvo ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Não salvo (modo temporário)', !ST.isPersistent());
+      if (dirtySinceVersion && Date.now() - lastVersionAt > VERSION_EVERY) {
+        await ST.addVersion(doc, 'Automática');
+        lastVersionAt = Date.now();
+        dirtySinceVersion = false;
       }
-    });
-
-    els.openLocalBtn.addEventListener('click', async function () {
-      const id = els.localProjectsSelect.value;
-      if (!id) return;
-      const project = T.storage.openProject(id);
-      if (!project) return alert('Projeto local não encontrado.');
-      T.store.loadProject(project);
-      await reloadImageIfNeeded(true);
-      T.ui.refreshAll();
-      T.drawing.draw();
-    });
-
-    els.deleteLocalBtn.addEventListener('click', function () {
-      const id = els.localProjectsSelect.value;
-      if (!id) return;
-      if (!confirm('Apagar este mapa salvo localmente, incluindo versões?')) return;
-      T.storage.deleteProject(id);
-      T.ui.refreshLocalProjects();
-      T.ui.refreshVersions();
-    });
-
-    els.newProjectBtn.addEventListener('click', function () {
-      if (!confirm('Criar um projeto vazio? O projeto atual só será mantido se você tiver salvo.')) return;
-      T.store.pushHistory();
-      T.store.loadProject({ projectName: '', imageData: null, objects: [], nodes: [] });
-      T.state.image = null;
-      T.ui.refreshAll();
-      T.drawing.draw();
-    });
-
-    els.saveVersionBtn.addEventListener('click', function () {
-      try {
-        T.storage.saveVersion(T.store.currentProject(), 'manual');
-        T.ui.refreshVersions();
-        alert('Versão salva.');
-      } catch (error) {
-        alert('Não foi possível salvar a versão.');
+      saveErrorShown = false;
+    } catch (err) {
+      console.error(err);
+      setStatus('Erro ao salvar', true);
+      if (!saveErrorShown) {
+        saveErrorShown = true;
+        UI.toast('Não foi possível salvar neste navegador. Faça um backup em Exportar.', { type: 'error', duration: 6000 });
       }
-    });
-
-    els.restoreVersionBtn.addEventListener('click', async function () {
-      const id = T.storage.currentProjectId(T.store.currentProject());
-      const versionId = els.versionSelect.value;
-      if (!versionId) return;
-      if (!confirm('Restaurar esta versão? O estado atual só será mantido se você salvar uma nova versão antes.')) return;
-      const project = T.storage.restoreVersion(id, versionId);
-      if (!project) return alert('Versão não encontrada.');
-      T.store.pushHistory();
-      T.store.loadProject(project);
-      await reloadImageIfNeeded(true);
-      T.ui.refreshAll();
-      T.drawing.draw();
-    });
-
-    els.exportPngBtn.addEventListener('click', T.exporter.exportPng);
+    }
   }
 
-  function bindCanvas(canvas) {
-    canvas.addEventListener('mousedown', onPointerDown);
-    canvas.addEventListener('mousemove', onPointerMove);
-    window.addEventListener('mouseup', onPointerUp);
-    canvas.addEventListener('dblclick', onDoubleClick);
+  const scheduleSave = U.debounce(saveNow, 700);
 
-    canvas.addEventListener('touchstart', onPointerDown, { passive: false });
-    canvas.addEventListener('touchmove', onPointerMove, { passive: false });
-    canvas.addEventListener('touchend', onPointerUp, { passive: false });
+  /* ---------- Atualização da interface ---------- */
 
-    canvas.addEventListener('wheel', function (event) {
-      event.preventDefault();
-      if (T.state.settings.mapLocked) return;
-      const point = canvasPoint(event);
-      const factor = event.deltaY < 0 ? 1.1 : 0.9;
-      zoomAt(point.x, point.y, T.state.scale * factor);
-    }, { passive: false });
+  function scheduleUi() {
+    if (uiQueued) return;
+    uiQueued = true;
+    requestAnimationFrame(() => { uiQueued = false; refreshUi(); });
   }
 
-  function onPointerDown(event) {
-    event.preventDefault();
-    const state = T.state;
-
-    if (event.touches && event.touches.length === 2) {
-      if (!state.settings.mapLocked) startPinch(event);
-      return;
-    }
-
-    const p = canvasPoint(event);
-    const world = T.drawing.screenToWorld(p.x, p.y);
-
-    if (state.tool === 'road') return addRoadPoint(world);
-    if (state.tool === 'area') return addAreaPoint(world);
-    if (state.tool === 'focus') return startFocus(world, p);
-    if (state.tool === 'text') return addText(world);
-    if (state.tool === 'point') return addPoint(world);
-    if (state.tool === 'compass') return addCompass(world);
-    if (state.tool === 'legend') return addLegend(world);
-    if (state.tool === 'connect') return handleConnect(world);
-    if (state.tool === 'edit') return handleEditDown(world, p);
-    if (state.tool === 'pan') return startPan(p);
-
-    handleSelectDown(world, p);
+  function refreshUi() {
+    if (!S.doc) return;
+    $('undoBtn').disabled = !S.canUndo();
+    $('redoBtn').disabled = !S.canRedo();
+    if (E.busy) return; // durante arrastos só o desenho é atualizado
+    const name = $('projectName');
+    if (document.activeElement !== name) name.value = S.doc.name || '';
+    document.title = (S.doc.name ? S.doc.name + ' · ' : '') + 'Mapas de Território';
+    const tab = UI.currentTab();
+    if (tab === 'item') UI.renderInspector();
+    UI.renderLayers();
+    if (tab === 'settings') UI.renderSettings();
+    updateStart();
   }
 
-  function onPointerMove(event) {
-    event.preventDefault();
-    const state = T.state;
-
-    if (event.touches && event.touches.length === 2 && state.drag.mode === 'pinch') {
-      movePinch(event);
-      return;
-    }
-
-    const p = canvasPoint(event);
-    const world = T.drawing.screenToWorld(p.x, p.y);
-
-    if (state.tool === 'road' || state.tool === 'area') {
-      T.drawing.snapPointPreview(world);
-      T.drawing.draw();
-      return;
-    }
-
-    if (!state.drag.active) return;
-
-    const dx = p.x - state.drag.lastX;
-    const dy = p.y - state.drag.lastY;
-
-    if (state.drag.mode === 'focus-draw' && state.drawingFocus) {
-      state.drawingFocus.w = world.x - state.drawingFocus.x;
-      state.drawingFocus.h = world.y - state.drawingFocus.y;
-    }
-
-    if (state.drag.mode === 'pan') {
-      state.offsetX += dx;
-      state.offsetY += dy;
-    }
-
-    if (state.drag.mode === 'object') {
-      const obj = T.store.selectedObject();
-      T.store.moveObject(obj, dx / state.scale, dy / state.scale);
-    }
-
-    if (state.drag.mode === 'node' && state.drag.draggedNodeId) {
-      T.store.setNodePosition(state.drag.draggedNodeId, world.x, world.y);
-    }
-
-    state.drag.lastX = p.x;
-    state.drag.lastY = p.y;
-    T.drawing.draw();
+  function updateStart() {
+    const d = S.doc;
+    $('startScreen').hidden = !!(d.base.imageId || d.objects.length || d._blank);
   }
 
-  function onPointerUp(event) {
-    if (event && event.preventDefault) event.preventDefault();
-    const state = T.state;
+  S.on((kind) => {
+    if (kind === 'doc') {
+      dirtySinceVersion = true;
+      if (hasContent(S.doc)) setStatus('Salvando…');
+      scheduleSave();
+    }
+    if (kind === 'select' && S.sel.id && UI.currentTab() !== 'item' && UI.currentTab() !== 'layers') UI.switchTab('item');
+    E.requestDraw();
+    scheduleUi();
+  });
 
-    if (state.drag.mode === 'focus-draw' && state.drawingFocus) {
-      const focus = state.drawingFocus;
-      if (Math.abs(focus.w) > 8 && Math.abs(focus.h) > 8) {
-        T.store.addObject(focus);
-        T.ui.setTool('select');
-        T.storage.autoSave();
+  /* ---------- Documento ---------- */
+
+  async function ensureImage(doc) {
+    const id = doc.base.imageId;
+    if (!id || App.images.get(id)) return;
+    const dataUrl = await ST.getImage(id).catch(() => null);
+    if (!dataUrl) { doc.base.imageId = null; return; }
+    try { await App.images.add(id, dataUrl); } catch (e) { doc.base.imageId = null; }
+  }
+
+  async function loadDoc(doc) {
+    await ensureImage(doc);
+    if (doc._needsFrame) { M.fitFrame(doc); delete doc._needsFrame; }
+    S.setDoc(doc);
+    lastVersionAt = Date.now();
+    dirtySinceVersion = false;
+    E.cancelDraft();
+    E.setTool('select');
+    E.fitFrame();
+    UI.renderInspector(true);
+    refreshUi();
+    setStatus(hasContent(doc) ? 'Salvo' : '');
+    ST.setPrefs({ lastProjectId: doc.id });
+    if (hasContent(doc)) scheduleSave(); // atualiza a miniatura (ex.: mapas importados)
+  }
+
+  async function setBaseImage(dataUrl, opts) {
+    const o = opts || {};
+    let norm;
+    try { norm = await U.normalizeImageDataUrl(dataUrl, 6000); }
+    catch (e) { UI.toast('Não foi possível ler essa imagem.', { type: 'error' }); return; }
+    const id = U.uid('img');
+    await App.images.add(id, norm.dataUrl, norm.img);
+    try { await ST.putImage(id, norm.dataUrl); } catch (e) { console.warn(e); }
+    const d = S.doc;
+    const k = norm.img.naturalWidth / (o.width || norm.img.naturalWidth);
+    S.checkpoint();
+    d.base = Object.assign({}, d.base, { imageId: id, width: norm.img.naturalWidth, height: norm.img.naturalHeight, visible: true, attribution: o.attribution || '' });
+    if (o.frame) {
+      const r = M.frameRatio(d);
+      const f = { x: o.frame.x * k, y: o.frame.y * k, w: o.frame.w * k, h: o.frame.h * k };
+      const w = Math.min(f.w, f.h * r);
+      d.frame = Object.assign({}, d.frame, { x: f.x + (f.w - w) / 2, y: f.y + (f.h - w / r) / 2, w, h: w / r });
+    } else if (!d.objects.length) {
+      M.fitFrame(d);
+    }
+    S.changed();
+    E.fitFrame();
+    UI.toast(d.objects.length ? 'Mapa base atualizado.' : 'Mapa pronto! Escolha "Rua" ou "Área" para começar a desenhar.', { type: 'ok', duration: 4000 });
+  }
+
+  async function handleImageFile(file) {
+    if (!file || !/^image\//.test(file.type)) { UI.toast('Escolha um arquivo de imagem (PNG, JPG…).'); return; }
+    if (S.doc.base.imageId) {
+      const ok = await UI.confirm({ title: 'Substituir o mapa base?', message: 'A imagem atual será trocada. Os itens desenhados continuam nas mesmas posições (dá para desfazer).', ok: 'Substituir' });
+      if (!ok) return;
+    }
+    const dataUrl = await U.readFile(file);
+    await setBaseImage(dataUrl);
+  }
+
+  async function importProjectFile(file) {
+    try {
+      const text = await U.readFile(file, 'text');
+      const parsed = ST.parseProjectFile(text);
+      const doc = parsed.doc;
+      const existing = await ST.getProject(doc.id);
+      if (existing) doc.id = U.uid('map');
+      if (parsed.imageDataUrl) {
+        const norm = await U.normalizeImageDataUrl(parsed.imageDataUrl, 6000);
+        const id = U.uid('img');
+        await App.images.add(id, norm.dataUrl, norm.img);
+        await ST.putImage(id, norm.dataUrl);
+        Object.assign(doc.base, { imageId: id, width: norm.img.naturalWidth, height: norm.img.naturalHeight });
+      } else {
+        doc.base.imageId = null;
       }
-      state.drawingFocus = null;
+      if (parsed.needsFrame) doc._needsFrame = true;
+      await saveNow();
+      await loadDoc(doc);
+      await saveNow();
+      UI.toast('Mapa "' + (doc.name || 'sem nome') + '" aberto.', { type: 'ok' });
+    } catch (err) {
+      console.error(err);
+      UI.toast(err.message || 'Arquivo inválido.', { type: 'error' });
     }
-
-    state.drag.active = false;
-    state.drag.mode = null;
-    state.drag.draggedNodeId = null;
-    state.drag.draggedPoint = null;
-    T.ui.updateDrawingButtons();
-    T.ui.refreshAll();
-    T.drawing.draw();
   }
 
-  function onDoubleClick(event) {
-    event.preventDefault();
-    if (T.state.tool === 'road') finishRoad();
-    if (T.state.tool === 'area') finishArea();
+  /* ---------- Exportação ---------- */
+
+  function exportCanvas(hd) {
+    const f = S.doc.frame;
+    const ratio = f.w / f.h;
+    let w = hd ? 5600 : 2800;
+    // Limite seguro de pixels para celulares
+    w = Math.min(w, Math.floor(Math.sqrt(16e6 * ratio)));
+    return R.renderFrame(S.doc, w);
   }
 
-  function addRoadPoint(world) {
-    const point = T.drawing.makeSnappedPoint(world);
-    T.state.drawingRoad.push(point);
-    T.ui.updateDrawingButtons();
-    T.drawing.draw();
-  }
+  const fileBase = () => U.safeFileName(S.doc.name || 'mapa-territorio');
 
-  function addAreaPoint(world) {
-    const point = T.drawing.makeSnappedPoint(world);
-    T.state.drawingArea.push(point);
-    T.ui.updateDrawingButtons();
-    T.drawing.draw();
-  }
-
-  function finishRoad() {
-    if (T.state.drawingRoad.length < 2) return;
-    const points = T.state.drawingRoad.map(function (p) { return T.store.makePoint(p.x, p.y, p.nodeId || null); });
-    T.store.addObject(Object.assign({ type: 'road', points: points, name: '' }, T.store.defaultStyle('road'), { points: points }));
-    T.state.drawingRoad = [];
-    T.state.snapPreview = null;
-    afterNewObject();
-  }
-
-  function finishArea() {
-    if (T.state.drawingArea.length < 3) return;
-    const points = T.state.drawingArea.map(function (p) { return T.store.makePoint(p.x, p.y, p.nodeId || null); });
-    T.store.addObject(Object.assign({ type: 'area', points: points, name: 'Área' }, T.store.defaultStyle('area'), { points: points }));
-    T.state.drawingArea = [];
-    T.state.snapPreview = null;
-    afterNewObject();
-  }
-
-  function cancelDrawing() {
-    T.state.drawingRoad = [];
-    T.state.drawingArea = [];
-    T.state.drawingFocus = null;
-    T.state.snapPreview = null;
-    T.state.connectDraft = null;
-    T.ui.updateDrawingButtons();
-    T.drawing.draw();
-  }
-
-  function startFocus(world, screenPoint) {
-    T.store.pushHistory();
-    T.state.drawingFocus = Object.assign({ type: 'focus', x: world.x, y: world.y, w: 0, h: 0, name: 'Área de foco' }, T.store.defaultStyle('focus'));
-    T.state.drag.active = true;
-    T.state.drag.mode = 'focus-draw';
-    T.state.drag.lastX = screenPoint.x;
-    T.state.drag.lastY = screenPoint.y;
-    T.ui.updateDrawingButtons();
-    T.drawing.draw();
-  }
-
-  function addText(world) {
-    T.store.addObject(Object.assign({ type: 'text', x: world.x, y: world.y, name: 'Nome ou número' }, T.store.defaultStyle('text')));
-    afterNewObject();
-  }
-
-  function addPoint(world) {
-    T.store.addObject(Object.assign({ type: 'point', x: world.x, y: world.y, name: 'Referência' }, T.store.defaultStyle('point')));
-    afterNewObject();
-  }
-
-  function addCompass(world) {
-    T.store.addObject(Object.assign({ type: 'compass', x: world.x, y: world.y, name: '' }, T.store.defaultStyle('compass')));
-    afterNewObject();
-  }
-
-  function addLegend(world) {
-    T.store.addObject(Object.assign({ type: 'legend', x: world.x, y: world.y }, T.store.defaultStyle('legend')));
-    afterNewObject();
-  }
-
-  function handleConnect(world) {
-    const hit = T.drawing.hitObjectPoint(world.x, world.y);
-    if (!hit || !hit.nodeId) {
-      T.ui.updateFloatingHelp();
-      return;
+  async function doExport(kind) {
+    const doc = S.doc;
+    try {
+      if (kind === 'png' || kind === 'png-hd') {
+        const blob = await U.canvasToBlob(exportCanvas(kind === 'png-hd'));
+        U.downloadBlob(fileBase() + '.png', blob);
+        UI.toast('Imagem baixada.', { type: 'ok' });
+      } else if (kind === 'copy') {
+        if (!navigator.clipboard || !window.ClipboardItem) throw new Error('Copiar imagem não é suportado neste navegador. Use "Baixar imagem".');
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': U.canvasToBlob(exportCanvas(false)) })]);
+        UI.toast('Imagem copiada. Cole no WhatsApp, documento ou e-mail.', { type: 'ok' });
+      } else if (kind === 'share') {
+        const blob = await U.canvasToBlob(exportCanvas(false));
+        const file = new File([blob], fileBase() + '.png', { type: 'image/png' });
+        await navigator.share({ files: [file], title: doc.name || 'Mapa de território' });
+      } else if (kind === 'print') {
+        printCard();
+      } else if (kind === 'json') {
+        await ST.exportJson(doc);
+        UI.toast('Backup baixado. Guarde esse arquivo para restaurar ou abrir em outro aparelho.', { type: 'ok', duration: 4000 });
+      }
+    } catch (err) {
+      if (err && err.name === 'AbortError') return;
+      console.error(err);
+      UI.toast(err.message || 'Não foi possível exportar.', { type: 'error' });
     }
-
-    if (!T.state.connectDraft) {
-      T.state.connectDraft = { nodeId: hit.nodeId };
-      T.store.selectPoint(hit.object.id, hit.index);
-      T.ui.refreshAll();
-      T.drawing.draw();
-      return;
-    }
-
-    if (T.state.connectDraft.nodeId === hit.nodeId) return;
-
-    T.store.pushHistory();
-    T.store.mergeNodes(hit.nodeId, T.state.connectDraft.nodeId);
-    T.state.connectDraft = null;
-    T.store.selectPoint(hit.object.id, hit.index);
-    refreshAfterChange();
-    T.storage.autoSave();
   }
 
-  function handleEditDown(world, screenPoint) {
-    const selected = T.store.selectedObject();
-    const pointHit = T.drawing.hitObjectPoint(world.x, world.y, selected ? selected.id : null) || T.drawing.hitObjectPoint(world.x, world.y);
-    if (pointHit && pointHit.nodeId) {
-      T.store.selectPoint(pointHit.object.id, pointHit.index);
-      T.store.pushHistory();
-      T.state.drag.active = true;
-      T.state.drag.mode = 'node';
-      T.state.drag.draggedNodeId = pointHit.nodeId;
-      T.state.drag.lastX = screenPoint.x;
-      T.state.drag.lastY = screenPoint.y;
-      T.ui.refreshAll();
-      T.drawing.draw();
-      return;
-    }
+  // Imprime no tamanho físico do formato escolhido (ex.: 14 × 5,8 cm).
+  function printCard() {
+    const preset = M.FRAMES[S.doc.frame.preset] || M.FRAMES.card;
+    const url = exportCanvas(false).toDataURL('image/png');
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;right:0;bottom:0';
+    frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><title>' + U.escapeHtml(S.doc.name || 'Mapa') + '</title><style>@page{margin:10mm}html,body{margin:0}img{width:' + preset.w + 'cm;height:' + preset.h + 'cm;display:block;border:0.2mm solid #999}</style></head><body><img src="' + url + '"></body></html>';
+    frame.onload = () => {
+      const w = frame.contentWindow;
+      const img = w.document.querySelector('img');
+      const go = () => { w.focus(); w.print(); setTimeout(() => frame.remove(), 60000); };
+      if (img.complete) go(); else img.onload = go;
+    };
+    document.body.appendChild(frame);
+  }
 
-    if (selected && selected.points && !selected.locked) {
-      const segment = T.drawing.hitSegment(world.x, world.y, { distance: 18 });
-      if (segment && segment.object.id === selected.id) {
-        T.store.pushHistory();
-        const point = T.store.insertNodeIntoObject(selected.id, segment.segmentIndex, segment.x, segment.y);
-        T.store.selectPoint(selected.id, segment.segmentIndex + 1);
-        T.ui.refreshAll();
-        T.drawing.draw();
-        T.storage.autoSave();
+  /* ---------- Ações ---------- */
+
+  function revealIfHidden(id) {
+    const o = S.get(id);
+    if (!o) return;
+    const b = R.objectBounds(o);
+    const v = E.visibleWorld();
+    const inside = b.x + b.w > v.x && b.x < v.x + v.w && b.y + b.h > v.y && b.y < v.y + v.h;
+    if (!inside) {
+      const cx = b.x + b.w / 2, cy = b.y + b.h / 2;
+      E.view.ox += (v.x + v.w / 2 - cx) * E.view.scale;
+      E.view.oy += (v.y + v.h / 2 - cy) * E.view.scale;
+      E.requestDraw();
+    }
+  }
+
+  const actions = {
+    saveNow: () => { scheduleSave.cancel(); return saveNow(); },
+
+    objectAction(act, id) {
+      const o = S.get(id);
+      if (!o) return;
+      switch (act) {
+        case 'visible': S.update(id, { visible: o.visible === false }, null); break;
+        case 'lock': S.update(id, { locked: !o.locked }, null); break;
+        case 'duplicate': S.duplicate(id); break;
+        case 'front': if (!S.reorder(id, 1)) UI.toast('Já está na frente do seu grupo.'); break;
+        case 'back': if (!S.reorder(id, -1)) UI.toast('Já está atrás no seu grupo.'); break;
+        case 'delete':
+          if (o.locked) { UI.toast('Desbloqueie o item para excluir.'); return; }
+          S.remove(id);
+          UI.toast(M.TYPES[o.type].label + ' excluído.', { action: { label: 'Desfazer', fn: () => S.undo() } });
+          break;
+        case 'removeVertex':
+          if (o.locked) return;
+          if (!S.removeVertex(id, S.sel.node)) UI.toast(o.type === 'road' ? 'A rua precisa de pelo menos 2 pontos.' : 'A área precisa de pelo menos 3 pontos.');
+          break;
+        case 'detach':
+          if (S.detachNode(id, S.sel.node)) UI.toast('Ponto desligado. Arraste-o para separar.');
+          break;
+        case 'split':
+          if (S.splitRoad(id, S.sel.node)) UI.toast('Rua dividida em duas, ligadas neste ponto.', { type: 'ok' });
+          break;
+        case 'crossOne': {
+          S.checkpoint();
+          const n = S.crossRoads([id], 3 / E.view.scale);
+          if (n) { S.changed(); UI.toast(n + (n === 1 ? ' junção criada.' : ' junções criadas.'), { type: 'ok' }); }
+          else { S.dropLastCheckpoint(); UI.toast('Nenhum cruzamento novo encontrado.'); }
+          break;
+        }
+        case 'frameTo': {
+          const b = R.objectBounds(o);
+          const r = M.frameRatio();
+          const pad = Math.max(b.w, b.h) * 0.08;
+          let w = Math.max(b.w + pad * 2, (b.h + pad * 2) * r);
+          S.checkpoint();
+          S.doc.frame = Object.assign({}, S.doc.frame, { x: b.x + b.w / 2 - w / 2, y: b.y + b.h / 2 - w / r / 2, w, h: w / r });
+          S.changed();
+          E.fitFrame();
+          UI.toast('Cartão enquadrado.', { type: 'ok' });
+          break;
+        }
+      }
+    },
+
+    crossAll() {
+      S.checkpoint();
+      const n = S.crossRoads(null, 3 / E.view.scale);
+      if (n) { S.changed(); UI.toast(n + (n === 1 ? ' cruzamento virou junção.' : ' cruzamentos viraram junções.'), { type: 'ok' }); }
+      else { S.dropLastCheckpoint(); UI.toast('Nenhum cruzamento novo encontrado.'); }
+    },
+
+    selectAndReveal(id) {
+      if (E.tool !== 'select') E.setTool('select');
+      S.select(id);
+      revealIfHidden(id);
+    },
+
+    zoomToObject(id) {
+      const o = S.get(id);
+      if (!o) return;
+      const b = R.objectBounds(o);
+      const pad = Math.max(b.w, b.h) * 0.3 + 10;
+      E.zoomToRect({ x: b.x - pad, y: b.y - pad, w: b.w + pad * 2, h: b.h + pad * 2 });
+    },
+
+    focusField(k) {
+      UI.switchTab('item');
+      UI.renderInspector(true);
+      const el = document.querySelector('#inspector [data-k="' + k + '"]');
+      if (el) { el.focus({ preventScroll: false }); if (el.select) el.select(); }
+    },
+
+    async settingsAction(a) {
+      const d = S.doc;
+      if (a === 'frameTool') { E.setTool('frame'); E.fitFrame(); return; }
+      if (a === 'frameView') {
+        const v = E.visibleWorld();
+        const r = M.frameRatio();
+        const w = Math.min(v.w, v.h * r) * 0.92;
+        S.checkpoint();
+        d.frame = Object.assign({}, d.frame, { x: v.x + v.w / 2 - w / 2, y: v.y + v.h / 2 - w / r / 2, w, h: w / r });
+        S.changed();
+        E.fitFrame();
+        UI.toast('O cartão agora mostra a área que estava na tela.', { type: 'ok' });
         return;
       }
-    }
-
-    handleSelectDown(world, screenPoint);
-  }
-
-
-  function startPan(screenPoint) {
-    if (T.state.settings.mapLocked) return;
-    T.store.selectObject(null);
-    T.state.drag.active = true;
-    T.state.drag.mode = 'pan';
-    T.state.drag.lastX = screenPoint.x;
-    T.state.drag.lastY = screenPoint.y;
-    T.ui.refreshAll();
-    T.drawing.draw();
-  }
-
-  function handleSelectDown(world, screenPoint) {
-    const pointHit = T.drawing.hitObjectPoint(world.x, world.y, T.state.selectedId);
-    if (pointHit && pointHit.nodeId) {
-      T.store.selectPoint(pointHit.object.id, pointHit.index);
-      T.store.pushHistory();
-      T.state.drag.active = true;
-      T.state.drag.mode = 'node';
-      T.state.drag.draggedNodeId = pointHit.nodeId;
-      T.state.drag.lastX = screenPoint.x;
-      T.state.drag.lastY = screenPoint.y;
-      T.ui.refreshAll();
-      T.drawing.draw();
-      return;
-    }
-
-    const hit = T.drawing.hitTest(world.x, world.y);
-    if (hit) {
-      T.store.selectObject(hit.id);
-      if (!hit.locked) {
-        T.store.pushHistory();
-        T.state.drag.active = true;
-        T.state.drag.mode = 'object';
-      } else {
-        T.state.drag.active = false;
-        T.state.drag.mode = null;
+      if (a === 'frameFit') { S.checkpoint(); M.fitFrame(d); S.changed(); E.fitFrame(); return; }
+      if (a === 'replaceImage') { $('imageFile').click(); return; }
+      if (a === 'osm') { App.osm.open(); return; }
+      if (a === 'removeBase') {
+        const ok = await UI.confirm({ title: 'Remover o mapa base?', message: 'Os itens desenhados continuam. Você pode desfazer.', ok: 'Remover', danger: true });
+        if (!ok) return;
+        S.checkpoint();
+        d.base = Object.assign({}, d.base, { imageId: null, width: 0, height: 0, attribution: '' });
+        S.changed();
+        return;
       }
-    } else {
-      T.store.selectObject(null);
-      if (!T.state.settings.mapLocked) {
-        T.state.drag.active = true;
-        T.state.drag.mode = 'pan';
-      } else {
-        T.state.drag.active = false;
-        T.state.drag.mode = null;
+      if (a === 'saveVersion') {
+        const label = await UI.prompt({ title: 'Salvar versão', message: 'Dê um nome para encontrar depois (opcional).', placeholder: 'Ex.: Antes de redesenhar a quadra 3', ok: 'Salvar' });
+        if (label === null) return;
+        await saveNow();
+        await ST.addVersion(d, label || 'Manual');
+        lastVersionAt = Date.now();
+        dirtySinceVersion = false;
+        UI.toast('Versão salva.', { type: 'ok' });
+        UI.renderVersions();
       }
-    }
-    T.state.drag.lastX = screenPoint.x;
-    T.state.drag.lastY = screenPoint.y;
-    T.ui.refreshAll();
-    T.drawing.draw();
-  }
+    },
 
-  function afterNewObject() {
-    T.ui.setTool('select');
-    refreshAfterChange();
-    T.storage.autoSave();
-  }
+    setFramePreset(preset) {
+      const f = S.doc.frame;
+      S.checkpoint();
+      const cx = f.x + f.w / 2, cy = f.y + f.h / 2;
+      const p = M.FRAMES[preset];
+      const area = f.w * f.h;
+      const r = p.w / p.h;
+      const w = Math.sqrt(area * r);
+      S.doc.frame = Object.assign({}, f, { preset, w, h: w / r, x: cx - w / 2, y: cy - w / r / 2 });
+      S.changed();
+      E.fitFrame();
+      UI.renderSettings();
+    },
 
-  function refreshAfterChange() {
-    T.ui.refreshAll();
-    T.drawing.draw();
-  }
+    async restoreVersion(vid) {
+      const ok = await UI.confirm({ title: 'Restaurar esta versão?', message: 'O estado atual vira uma versão antes da troca, e você também pode desfazer.', ok: 'Restaurar' });
+      if (!ok) return;
+      const vdoc = await ST.getVersion(vid);
+      if (!vdoc) { UI.toast('Versão não encontrada.', { type: 'error' }); return; }
+      await saveNow();
+      await ST.addVersion(S.doc, 'Antes de restaurar');
+      await ensureImage(vdoc);
+      S.checkpoint();
+      const d = S.doc;
+      const v = M.normalize(vdoc);
+      ['name', 'frame', 'base', 'nodes', 'objects', 'settings'].forEach((k) => { d[k] = v[k]; });
+      S.select(null);
+      S.changed();
+      E.fitFrame();
+      UI.toast('Versão restaurada.', { type: 'ok' });
+      UI.renderVersions();
+    },
 
-  function centerOnObject(obj) {
-    const box = T.drawing.getObjectBox(obj);
-    const wrap = document.getElementById('canvasWrap');
-    const rect = wrap.getBoundingClientRect();
-    const cx = box.x + box.w / 2;
-    const cy = box.y + box.h / 2;
-    T.state.offsetX = rect.width / 2 - cx * T.state.scale;
-    T.state.offsetY = rect.height / 2 - cy * T.state.scale;
-    T.drawing.draw();
-  }
+    async newProject() {
+      await actions.saveNow();
+      await loadDoc(M.newDoc());
+    },
 
+    async openProject(id) {
+      if (id === S.doc.id) return;
+      await actions.saveNow();
+      const doc = await ST.getProject(id);
+      if (!doc) { UI.toast('Mapa não encontrado.', { type: 'error' }); return; }
+      await loadDoc(M.normalize(doc));
+    },
 
-  function fitMap() {
-    if (T.state.settings.mapLocked) return;
-    T.drawing.fitImage();
-    T.drawing.draw();
-  }
+    async deleteProject(id) {
+      await ST.deleteProject(id);
+      if (id === S.doc.id) {
+        const list = await ST.listProjects();
+        if (list.length) await loadDoc(M.normalize(await ST.getProject(list[0].id)));
+        else await loadDoc(M.newDoc());
+      }
+      UI.toast('Mapa excluído.');
+    },
 
-  function zoomAtCenter(factor) {
-    const wrap = document.getElementById('canvasWrap');
-    if (!wrap) return;
-    const rect = wrap.getBoundingClientRect();
-    zoomAt(rect.width / 2, rect.height / 2, T.state.scale * factor);
-  }
+    async duplicateProject(id) {
+      await actions.saveNow();
+      const doc = await ST.getProject(id);
+      if (!doc) return;
+      const copy = M.normalize(U.clone(doc));
+      copy.id = U.uid('map');
+      copy.name = (doc.name || 'Mapa') + ' (cópia)';
+      copy.createdAt = copy.updatedAt = new Date().toISOString();
+      await ensureImage(copy);
+      await ST.putProject(copy, null);
+      UI.toast('Cópia criada.', { type: 'ok' });
+    },
 
-  function toggleCleanMode() {
-    document.body.classList.toggle('presentation-mode');
-    if (T.ui.els.toggleUiBtn) {
-      T.ui.els.toggleUiBtn.textContent = document.body.classList.contains('presentation-mode') ? 'Mostrar painéis' : 'Modo limpo';
-    }
-    setTimeout(function () {
-      T.drawing.resizeCanvas();
-      T.drawing.draw();
-    }, 0);
-  }
+    async exportProjectJson(id) {
+      const doc = id === S.doc.id ? S.doc : await ST.getProject(id);
+      if (!doc) return;
+      await ensureImage(doc);
+      await ST.exportJson(doc);
+    },
 
-  function bindMobileTabs() {
-    document.querySelectorAll('[data-mobile-panel]').forEach(function (button) {
-      on(button, 'click', function () {
-        const panel = button.dataset.mobilePanel || 'create';
-        document.body.classList.remove('mobile-create', 'mobile-edit', 'mobile-layers', 'mobile-project');
-        document.body.classList.add('mobile-' + panel);
-        document.querySelectorAll('[data-mobile-panel]').forEach(function (item) {
-          item.classList.toggle('active', item === button);
-        });
-        setTimeout(T.drawing.resizeCanvas, 0);
-      });
+    pickJson: () => $('jsonFile').click(),
+    setBaseImage
+  };
+  App.actions = actions;
+
+  /* ---------- Ligações da interface ---------- */
+
+  function bindUi() {
+    UI.hydrateIcons(document);
+    UI.bindLayers();
+
+    document.querySelectorAll('[data-tool]').forEach((b) => b.addEventListener('click', () => E.setTool(b.dataset.tool)));
+    $('undoBtn').onclick = () => S.undo();
+    $('redoBtn').onclick = () => S.redo();
+    $('zoomInBtn').onclick = () => E.zoomBy(1.25);
+    $('zoomOutBtn').onclick = () => E.zoomBy(0.8);
+    $('zoomValue').onclick = () => E.fitFrame();
+    $('helpBtn').onclick = () => UI.openShortcuts();
+    $('projectsBtn').onclick = () => UI.openProjects();
+
+    const name = $('projectName');
+    name.addEventListener('input', () => S.setDocField('name', name.value, 'name'));
+    name.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === 'Escape') name.blur(); });
+    name.addEventListener('change', () => S.breakMerge());
+
+    document.querySelectorAll('.tabs [role="tab"]').forEach((t) => t.addEventListener('click', () => UI.switchTab(t.dataset.tab)));
+    $('panelToggle').onclick = () => $('panel').classList.toggle('collapsed');
+    // No celular deitado falta altura: o painel começa recolhido.
+    if (window.matchMedia('(max-width: 860px) and (max-height: 520px)').matches) $('panel').classList.add('collapsed');
+
+    // Menu de exportação
+    const menu = $('exportMenu');
+    const btn = $('exportBtn');
+    const closeMenu = () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); };
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      menu.hidden = !menu.hidden;
+      btn.setAttribute('aria-expanded', String(!menu.hidden));
     });
-  }
+    document.addEventListener('click', (e) => { if (!menu.hidden && !menu.contains(e.target)) closeMenu(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
+    menu.querySelectorAll('[data-export]').forEach((b) => b.addEventListener('click', () => { closeMenu(); doExport(b.dataset.export); }));
+    try {
+      const probe = new File([new Blob(['x'], { type: 'image/png' })], 'x.png', { type: 'image/png' });
+      if (navigator.canShare && navigator.canShare({ files: [probe] })) menu.querySelector('[data-export="share"]').hidden = false;
+    } catch (e) { /* sem suporte */ }
 
-  function canvasPoint(event) {
-    const canvas = document.getElementById('mapCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const source = event.touches && event.touches.length ? event.touches[0] : event.changedTouches && event.changedTouches.length ? event.changedTouches[0] : event;
-    return { x: source.clientX - rect.left, y: source.clientY - rect.top };
-  }
+    // Tela inicial
+    document.querySelectorAll('[data-start]').forEach((b) => b.addEventListener('click', () => {
+      const a = b.dataset.start;
+      if (a === 'osm') App.osm.open();
+      else if (a === 'image') $('imageFile').click();
+      else if (a === 'json') $('jsonFile').click();
+      else if (a === 'blank') { S.doc._blank = true; updateStart(); E.setTool('road'); }
+    }));
 
-  function zoomAt(sx, sy, newScale) {
-    const state = T.state;
-    if (state.settings.mapLocked) return;
-    newScale = utils.clamp(newScale, 0.1, 10);
-    const before = T.drawing.screenToWorld(sx, sy);
-    state.scale = newScale;
-    const after = T.drawing.worldToScreen(before.x, before.y);
-    state.offsetX += sx - after.x;
-    state.offsetY += sy - after.y;
-    T.drawing.draw();
-  }
+    $('imageFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) handleImageFile(f); });
+    $('jsonFile').addEventListener('change', (e) => { const f = e.target.files[0]; e.target.value = ''; if (f) importProjectFile(f); });
 
-  function startPinch(event) {
-    const state = T.state;
-    if (state.settings.mapLocked) return;
-    state.drag.mode = 'pinch';
-    state.drag.pinchStartDistance = touchDistance(event.touches[0], event.touches[1]);
-    state.drag.pinchStartScale = state.scale;
-    state.drag.pinchStartCenter = touchCenter(event.touches[0], event.touches[1]);
-  }
-
-  function movePinch(event) {
-    const state = T.state;
-    if (state.settings.mapLocked) return;
-    const canvas = document.getElementById('mapCanvas');
-    const rect = canvas.getBoundingClientRect();
-    const dist = touchDistance(event.touches[0], event.touches[1]);
-    const center = touchCenter(event.touches[0], event.touches[1]);
-    const sx = center.x - rect.left;
-    const sy = center.y - rect.top;
-    const newScale = state.drag.pinchStartScale * dist / Math.max(1, state.drag.pinchStartDistance);
-    zoomAt(sx, sy, newScale);
-    if (state.drag.pinchStartCenter) {
-      const dx = center.x - state.drag.pinchStartCenter.x;
-      const dy = center.y - state.drag.pinchStartCenter.y;
-      state.offsetX += dx * 0.4;
-      state.offsetY += dy * 0.4;
-      T.drawing.draw();
-    }
-  }
-
-  function touchDistance(a, b) { return Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY); }
-  function touchCenter(a, b) { return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 }; }
-
-  function loadImage(dataUrl, resetView) {
-    return new Promise(function (resolve, reject) {
-      const img = new Image();
-      img.onload = function () {
-        T.state.image = img;
-        T.state.imageData = dataUrl;
-        if (resetView) T.drawing.fitImage();
-        T.drawing.draw();
-        resolve();
-      };
-      img.onerror = reject;
-      img.src = dataUrl;
+    // Colar print (Ctrl+V)
+    window.addEventListener('paste', (e) => {
+      const t = e.target;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+      const item = Array.from(e.clipboardData ? e.clipboardData.items : []).find((i) => i.type.startsWith('image/'));
+      if (!item) return;
+      e.preventDefault();
+      handleImageFile(item.getAsFile());
     });
+
+    // Arrastar e soltar arquivos
+    const stage = $('stage');
+    const hint = $('dropHint');
+    let depth = 0;
+    const hasFiles = (e) => e.dataTransfer && Array.from(e.dataTransfer.types || []).includes('Files');
+    stage.addEventListener('dragenter', (e) => { if (!hasFiles(e)) return; e.preventDefault(); depth++; hint.hidden = false; });
+    stage.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+    stage.addEventListener('dragleave', () => { depth = Math.max(0, depth - 1); if (!depth) hint.hidden = true; });
+    stage.addEventListener('drop', (e) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      depth = 0;
+      hint.hidden = true;
+      const f = e.dataTransfer.files[0];
+      if (!f) return;
+      if (/json$/i.test(f.name) || f.type === 'application/json') importProjectFile(f);
+      else handleImageFile(f);
+    });
+
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') actions.saveNow(); });
+    window.addEventListener('beforeunload', () => { if (scheduleSave.pending()) actions.saveNow(); });
   }
 
-  function reloadImageIfNeeded(resetView) {
-    if (!T.state.imageData) {
-      T.state.image = null;
-      return Promise.resolve();
+  /* ---------- Início ---------- */
+
+  async function boot() {
+    bindUi();
+    const prefs = ST.getPrefs();
+    S.stylePrefs = prefs.styles || {};
+    S.onPrefsChange = U.debounce(() => ST.setPrefs({ styles: S.stylePrefs }), 500);
+    S.setDoc(M.newDoc());
+    E.init();
+
+    await ST.openDb();
+    const imported = await ST.importLegacyLocalStorage();
+
+    let doc = null;
+    if (prefs.lastProjectId) doc = await ST.getProject(prefs.lastProjectId).catch(() => null);
+    if (!doc) {
+      const list = await ST.listProjects().catch(() => []);
+      if (list.length) doc = await ST.getProject(list[0].id);
     }
-    return loadImage(T.state.imageData, resetView);
+    await loadDoc(doc ? M.normalize(doc) : M.newDoc());
+    if (imported) UI.toast(imported + (imported === 1 ? ' mapa da versão anterior foi importado.' : ' mapas da versão anterior foram importados.') + ' Veja em Meus mapas.', { type: 'ok', duration: 6000 });
+    ST.collectImages().catch(() => {});
+
+    // Offline em produção (GitHub Pages); fora do ar em desenvolvimento local.
+    if ('serviceWorker' in navigator && location.protocol === 'https:') {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
   }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
 })();

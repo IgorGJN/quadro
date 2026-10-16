@@ -2,317 +2,133 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Editor Offline de Territórios</title>
-  <link rel="stylesheet" href="styles.css?v=8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1f3b6e" />
+  <meta name="description" content="Editor de cartões de território: desenhe ruas, áreas e referências sobre o mapa e exporte para imprimir ou compartilhar." />
+  <title>Mapas de Território</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css?v=6.0" />
 </head>
-<body class="mobile-create">
-  <header class="app-header">
-    <div class="brand-block">
-      <h1>Editor Offline de Territórios</h1>
-      <span>Prancheta fixa 14 × 5,8</span>
-    </div>
-
-    <div class="top-actions">
-      <label class="file-btn primary-soft">
-        Carregar mapa
-        <input id="imageInput" type="file" accept="image/*" />
-      </label>
-
-      <button id="saveLocalBtn" class="primary">Salvar local</button>
-      <button id="exportPngBtn" class="primary">Exportar PNG</button>
-      <button id="downloadJsonBtn">Baixar JSON</button>
-
-      <label class="file-btn">
-        Abrir JSON
-        <input id="projectInput" type="file" accept="application/json,.json" />
-      </label>
-
-      <button id="toggleUiBtn" title="Ocultar/mostrar painéis">Modo limpo</button>
-    </div>
-  </header>
-
-  <main class="app-shell">
-    <aside class="sidebar sidebar-left" id="leftSidebar">
-      <section class="panel-section" data-mobile-group="create">
-        <div class="section-title">
-          <strong>Navegação</strong>
-          <small>mover, zoom e ajuste</small>
-        </div>
-
-        <div class="tool-grid compact" id="navigationTools">
-          <button data-tool="select" class="active">Selecionar</button>
-          <button data-tool="pan">Mão / navegar</button>
-          <button id="zoomInBtn" type="button">Zoom +</button>
-          <button id="zoomOutBtn" type="button">Zoom −</button>
-          <button id="fitMapBtn" type="button">Ajustar mapa</button>
-        </div>
-
-        <div class="hint" id="toolHint">
-          Selecione uma ferramenta. No celular, use dois dedos para mover/zoom no mapa.
-        </div>
-
-        <div class="map-base-card">
-          <strong>Mapa base</strong>
-          <label class="check-row">
-            <input id="mapVisibleInput" type="checkbox" checked />
-            Exibir mapa base
-          </label>
-          <label class="check-row">
-            <input id="mapLockedInput" type="checkbox" />
-            Bloquear movimento/zoom do mapa
-          </label>
-        </div>
-      </section>
-
-      <section class="panel-section" data-mobile-group="create">
-        <div class="section-title">
-          <strong>Criar elementos</strong>
-          <small>adicione itens ao mapa</small>
-        </div>
-
-        <div class="tool-grid" id="toolButtons">
-          <button data-tool="road">Rua</button>
-          <button data-tool="area">Área</button>
-          <button data-tool="text">Nome/Nº</button>
-          <button data-tool="point">Ponto</button>
-          <button data-tool="focus">Foco</button>
-          <button data-tool="compass">Norte</button>
-          <button data-tool="legend">Legenda</button>
-        </div>
-
-        <div class="row action-row drawing-actions">
-          <button id="finishRoadBtn" disabled>Concluir rua</button>
-          <button id="finishAreaBtn" disabled>Concluir área</button>
-          <button id="cancelDrawingBtn" disabled>Cancelar desenho</button>
-        </div>
-      </section>
-
-      <section class="panel-section" data-mobile-group="create">
-        <div class="section-title">
-          <strong>Conexões e desenho</strong>
-          <small>ruas, nós e encaixes</small>
-        </div>
-
-        <div class="tool-grid compact">
-          <button data-tool="edit">Editar nós</button>
-          <button data-tool="connect">Conectar nós</button>
-        </div>
-
-        <label class="check-row">
-          <input id="snapEnabledInput" type="checkbox" checked />
-          Encaixar ruas/áreas em pontos próximos
-        </label>
-
-        <div class="field">
-          <label for="snapDistanceInput">Distância de encaixe</label>
-          <input id="snapDistanceInput" type="number" value="18" min="2" max="80" step="1" inputmode="numeric" />
-        </div>
-
-        <div class="two-cols check-cols">
-          <label class="check-row">
-            <input id="showNodesInput" type="checkbox" checked />
-            Mostrar nós
-          </label>
-
-          <label class="check-row">
-            <input id="nodeLabelsInput" type="checkbox" checked />
-            Nº conexões
-          </label>
-        </div>
-
-        <div class="row action-row">
-          <button id="createIntersectionsBtn">Criar interseções reais</button>
-          <button id="undoBtn">Desfazer</button>
-          <button id="redoBtn">Refazer</button>
-        </div>
-      </section>
-    </aside>
-
-    <section class="canvas-panel" id="canvasPanel">
-      <div class="map-stage" id="mapStage" aria-label="Área do mapa em proporção 14 por 5,8">
-        <section class="canvas-wrap" id="canvasWrap">
-          <canvas id="mapCanvas"></canvas>
-          <div class="floating-help" id="floatingHelp">
-            Carregue uma imagem do mapa para começar.
-          </div>
-          <div class="hidden" id="nodeHint"></div>
-        </section>
+<body>
+  <div class="app" id="app">
+    <header class="topbar">
+      <button class="icon-btn brand" id="projectsBtn" title="Meus mapas" aria-label="Meus mapas">
+        <span data-icon="folder"></span>
+      </button>
+      <div class="title-block">
+        <input id="projectName" class="project-name" placeholder="Mapa sem nome" aria-label="Nome do mapa" spellcheck="false" />
+        <span class="save-status" id="saveStatus" aria-live="polite"></span>
       </div>
-    </section>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="undoBtn" title="Desfazer (Ctrl+Z)" aria-label="Desfazer"><span data-icon="undo"></span></button>
+        <button class="icon-btn" id="redoBtn" title="Refazer (Ctrl+Shift+Z)" aria-label="Refazer"><span data-icon="redo"></span></button>
+        <span class="divider"></span>
+        <button class="icon-btn hide-sm" id="helpBtn" title="Atalhos de teclado (?)" aria-label="Atalhos"><span data-icon="keyboard"></span></button>
+        <div class="menu-wrap">
+          <button class="btn primary" id="exportBtn" aria-haspopup="menu" aria-expanded="false">
+            <span data-icon="download"></span><span class="hide-xs">Exportar</span>
+          </button>
+          <div class="menu" id="exportMenu" role="menu" hidden>
+            <button role="menuitem" data-export="png"><span data-icon="image"></span>Baixar imagem (PNG)<small>2800 px</small></button>
+            <button role="menuitem" data-export="png-hd"><span data-icon="image"></span>Baixar em alta resolução<small>5600 px</small></button>
+            <button role="menuitem" data-export="copy"><span data-icon="clipboard"></span>Copiar imagem</button>
+            <button role="menuitem" data-export="share" hidden><span data-icon="share"></span>Compartilhar…</button>
+            <button role="menuitem" data-export="print"><span data-icon="print"></span>Imprimir no tamanho real</button>
+            <hr />
+            <button role="menuitem" data-export="json"><span data-icon="save"></span>Backup do projeto (.json)</button>
+          </div>
+        </div>
+      </div>
+    </header>
 
-    <aside class="sidebar sidebar-right" id="rightSidebar">
-      <section class="panel-section" data-mobile-group="edit">
-        <div class="section-title">
-          <strong>Item selecionado</strong>
-          <small>edição da camada ativa</small>
+    <div class="main">
+      <nav class="toolrail" id="toolrail" aria-label="Ferramentas">
+        <div class="tool-group">
+          <button class="tool" data-tool="select" title="Selecionar e editar (V)"><span data-icon="cursor"></span><em>Selecionar</em></button>
+          <button class="tool" data-tool="pan" title="Mover o mapa (H ou segure Espaço)"><span data-icon="hand"></span><em>Mover</em></button>
+        </div>
+        <div class="tool-group">
+          <button class="tool" data-tool="road" title="Rua (R)"><span data-icon="road"></span><em>Rua</em></button>
+          <button class="tool" data-tool="area" title="Área / território (A)"><span data-icon="area"></span><em>Área</em></button>
+          <button class="tool" data-tool="text" title="Texto, nome ou número (T)"><span data-icon="text"></span><em>Texto</em></button>
+          <button class="tool" data-tool="marker" title="Ponto de referência (P)"><span data-icon="marker"></span><em>Ponto</em></button>
+          <button class="tool" data-tool="focus" title="Foco: destaca uma região (F)"><span data-icon="focus"></span><em>Foco</em></button>
+          <button class="tool" data-tool="compass" title="Norte (N)"><span data-icon="compass"></span><em>Norte</em></button>
+          <button class="tool" data-tool="legend" title="Legenda (L)"><span data-icon="legend"></span><em>Legenda</em></button>
+        </div>
+        <div class="tool-group">
+          <button class="tool" data-tool="frame" title="Enquadrar o cartão (C)"><span data-icon="crop"></span><em>Cartão</em></button>
+        </div>
+      </nav>
+
+      <section class="stage" id="stage">
+        <canvas id="canvas" aria-label="Área de desenho do mapa"></canvas>
+
+        <div class="start" id="startScreen" hidden>
+          <div class="start-card">
+            <h2>Comece seu mapa de território</h2>
+            <p>Escolha a base do mapa. Depois desenhe ruas, áreas e referências por cima.</p>
+            <div class="start-grid">
+              <button class="start-option" data-start="osm">
+                <span data-icon="globe"></span>
+                <strong>Buscar no mapa</strong>
+                <small>Procure o endereço e capture a região (OpenStreetMap)</small>
+              </button>
+              <button class="start-option" data-start="image">
+                <span data-icon="image"></span>
+                <strong>Usar um print</strong>
+                <small>Imagem do Google Maps, foto ou captura de tela</small>
+              </button>
+              <button class="start-option" data-start="blank">
+                <span data-icon="area"></span>
+                <strong>Em branco</strong>
+                <small>Desenhar sem mapa de fundo</small>
+              </button>
+            </div>
+            <p class="start-foot">Dica: cole uma captura com <kbd>Ctrl</kbd>+<kbd>V</kbd> ou arraste uma imagem para cá. <button class="link" data-start="json">Abrir backup .json</button></p>
+          </div>
         </div>
 
-        <div class="empty-message" id="emptySelectionMessage">
-          Selecione um item no mapa ou escolha uma camada na lista.
+        <div class="drop-hint" id="dropHint" hidden><span data-icon="image"></span>Solte a imagem ou o backup .json</div>
+
+        <div class="hintbar" id="hintbar" hidden>
+          <span class="hint-text" id="hintText"></span>
+          <span class="hint-actions" id="hintActions"></span>
         </div>
 
-        <div id="propertiesPanel">
-          <div class="selection-status" id="selectionStatus"></div>
-
-          <div class="field field-name">
-            <label id="nameLabel" for="nameInput">Texto</label>
-            <textarea id="nameInput" rows="3" placeholder="Digite o texto. Na legenda, use uma linha por item."></textarea>
-          </div>
-
-          <div class="two-cols">
-            <div class="field field-color">
-              <label id="colorLabel" for="colorInput">Cor</label>
-              <input id="colorInput" type="color" value="#2563eb" />
-            </div>
-
-            <div class="field field-border-color">
-              <label id="borderColorLabel" for="borderColorInput">Cor da borda</label>
-              <input id="borderColorInput" type="color" value="#ffffff" />
-            </div>
-          </div>
-
-          <div class="field field-background">
-            <label id="backgroundColorLabel" for="backgroundColorInput">Cor de fundo</label>
-            <input id="backgroundColorInput" type="color" value="#ffffff" />
-          </div>
-
-          <div class="two-cols">
-            <div class="field field-size">
-              <label id="sizeLabel" for="sizeInput">Tamanho</label>
-              <input id="sizeInput" type="number" value="16" min="1" max="200" step="1" inputmode="numeric" />
-            </div>
-
-            <div class="field field-border-width">
-              <label id="borderWidthLabel" for="borderWidthInput">Espessura da borda</label>
-              <input id="borderWidthInput" type="number" value="0" min="0" max="80" step="1" inputmode="numeric" />
-            </div>
-          </div>
-
-          <div class="field field-opacity">
-            <label id="opacityLabel" for="opacityInput">Transparência</label>
-            <input id="opacityInput" type="range" value="0.45" min="0" max="1" step="0.05" />
-          </div>
-
-          <div class="field field-rotation">
-            <label for="rotationInput">Rotação em graus</label>
-            <input id="rotationInput" type="number" value="0" min="-180" max="180" step="1" inputmode="numeric" />
-          </div>
-
-          <div class="field field-shape">
-            <label for="shapeInput">Formato do foco</label>
-            <select id="shapeInput">
-              <option value="rect">Retângulo</option>
-              <option value="ellipse">Circular/Oval</option>
-            </select>
-          </div>
-
-          <div class="field field-icon">
-            <label for="iconInput">Tipo de ponto</label>
-            <select id="iconInput">
-              <option value="●">Ponto</option>
-              <option value="✚">Saúde</option>
-              <option value="✝">Igreja</option>
-              <option value="★">Referência</option>
-              <option value="■">Prédio</option>
-              <option value="⚑">Marco</option>
-              <option value="⌂">Casa</option>
-              <option value="ⓘ">Informação</option>
-            </select>
-          </div>
-
-          <label class="check-row field-rounded">
-            <input id="roundedInput" type="checkbox" checked />
-            Pontas e junções arredondadas
-          </label>
-
-          <label class="check-row field-smooth">
-            <input id="smoothInput" type="checkbox" />
-            Suavizar forma/curva
-          </label>
-
-          <div class="row action-row layer-toggle-row">
-            <button id="toggleVisibleBtn" type="button">Ocultar camada</button>
-            <button id="toggleLockBtn" type="button">Bloquear camada</button>
-          </div>
-
-          <div class="row action-row">
-            <button id="centerFocusBtn" class="hidden">Centralizar foco</button>
-            <button id="duplicateBtn">Duplicar</button>
-            <button id="bringForwardBtn">Frente</button>
-            <button id="sendBackwardBtn">Trás</button>
-            <button id="deleteBtn" class="danger">Excluir</button>
-          </div>
-
-          <div class="row action-row">
-            <button id="removePointBtn" disabled>Remover ponto</button>
-            <button id="splitRoadBtn" disabled>Dividir rua</button>
-          </div>
+        <div class="zoombar" aria-label="Zoom">
+          <button class="icon-btn" id="zoomOutBtn" title="Afastar (−)" aria-label="Afastar"><span data-icon="minus"></span></button>
+          <button class="zoom-value" id="zoomValue" title="Ver o cartão inteiro (0)">100%</button>
+          <button class="icon-btn" id="zoomInBtn" title="Aproximar (+)" aria-label="Aproximar"><span data-icon="plus"></span></button>
         </div>
       </section>
 
-      <section class="panel-section" data-mobile-group="layers">
-        <div class="section-title">
-          <strong>Camadas</strong>
-          <small>mostrar, bloquear e selecionar</small>
+      <aside class="panel" id="panel">
+        <div class="tabs" role="tablist">
+          <button role="tab" data-tab="item" class="active">Item</button>
+          <button role="tab" data-tab="layers">Camadas <span class="count" id="layerCount"></span></button>
+          <button role="tab" data-tab="settings">Mapa</button>
+          <button class="icon-btn panel-toggle" id="panelToggle" aria-label="Recolher painel"><span data-icon="chevron"></span></button>
         </div>
-        <div id="objectList" class="layer-list"></div>
-      </section>
+        <div class="tab-body" data-body="item" id="inspector"></div>
+        <div class="tab-body" data-body="layers" id="layers" hidden></div>
+        <div class="tab-body" data-body="settings" id="settings" hidden></div>
+      </aside>
+    </div>
+  </div>
 
-      <section class="panel-section" data-mobile-group="project">
-        <div class="section-title">
-          <strong>Projeto</strong>
-          <small>salvamento e versões</small>
-        </div>
+  <input type="file" id="imageFile" accept="image/*" hidden />
+  <input type="file" id="jsonFile" accept="application/json,.json" hidden />
+  <div class="toasts" id="toasts" aria-live="polite"></div>
 
-        <div class="field">
-          <label for="projectNameInput">Nome do mapa</label>
-          <input id="projectNameInput" placeholder="Ex.: Território Centro 01" />
-        </div>
-
-        <div class="field">
-          <label for="localProjectsSelect">Mapas salvos neste navegador</label>
-          <select id="localProjectsSelect"></select>
-        </div>
-
-        <div class="row action-row">
-          <button id="openLocalBtn">Abrir local</button>
-          <button id="newProjectBtn">Novo</button>
-          <button id="deleteLocalBtn" class="danger">Apagar local</button>
-        </div>
-
-        <label class="check-row">
-          <input id="autoSaveInput" type="checkbox" />
-          Autosalvar localmente
-        </label>
-
-        <div class="field">
-          <label for="versionSelect">Versões salvas</label>
-          <select id="versionSelect"></select>
-        </div>
-
-        <div class="row action-row">
-          <button id="saveVersionBtn">Salvar versão</button>
-          <button id="restoreVersionBtn">Restaurar versão</button>
-        </div>
-      </section>
-    </aside>
-
-    <nav class="mobile-tabs" id="mobileTabs" aria-label="Painéis do editor">
-      <button data-mobile-panel="create" class="active">Criar</button>
-      <button data-mobile-panel="edit">Editar</button>
-      <button data-mobile-panel="layers">Camadas</button>
-      <button data-mobile-panel="project">Projeto</button>
-    </nav>
-  </main>
-
-  <script src="js/utils.js?v=8"></script>
-  <script src="js/state.js?v=8"></script>
-  <script src="js/drawing.js?v=8"></script>
-  <script src="js/storage.js?v=8"></script>
-  <script src="js/exporter.js?v=8"></script>
-  <script src="js/ui.js?v=8"></script>
-  <script src="js/app.js?v=8"></script>
-  <script src="js/layer-fix.js?v=8"></script>
+  <script src="js/util.js?v=6.0"></script>
+  <script src="js/model.js?v=6.0"></script>
+  <script src="js/render.js?v=6.0"></script>
+  <script src="js/storage.js?v=6.0"></script>
+  <script src="js/ui.js?v=6.0"></script>
+  <script src="js/osm.js?v=6.0"></script>
+  <script src="js/editor.js?v=6.0"></script>
+  <script src="js/app.js?v=6.0"></script>
 </body>
 </html>

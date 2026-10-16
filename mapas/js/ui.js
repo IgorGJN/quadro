@@ -1,844 +1,621 @@
+/* Interface: ícones, avisos, diálogos, inspetor, camadas, ajustes e galeria. */
 (function () {
   'use strict';
 
-  const T = window.Territorios || (window.Territorios = {});
-  const utils = T.utils;
-  const els = {};
+  const App = window.App;
+  const U = App.util;
+  const M = App.model;
+  const S = App.store;
+  const A = () => App.actions;
 
-  const typeLabels = { road: 'Rua', text: 'Nome/Número', point: 'Ponto', area: 'Área', focus: 'Foco', compass: 'Bússola', legend: 'Legenda' };
-  const typeOrder = ['road', 'text', 'point', 'area', 'focus', 'compass', 'legend'];
+  /* ---------- Ícones (SVG em linha, sem dependências) ---------- */
 
-  const toolHints = {
-    select: 'Selecionar: toque em um item para selecionar. Arraste área vazia para mover o mapa. Arraste item desbloqueado para mover.',
-    pan: 'Mão / navegar: arraste para mover o mapa. Use a roda do mouse, os botões de zoom ou dois dedos no celular.',
-    edit: 'Editar nós: selecione uma rua/área. Toque em um nó para mover; toque em um segmento para inserir novo ponto.',
-    connect: 'Conectar: toque no primeiro nó e depois no segundo. O nó verde indica junção real compartilhada.',
-    road: 'Rua: toque ponto por ponto. Perto de nó/segmento, o ponto encaixa. Use “Concluir rua”.',
-    text: 'Nome/Nº: toque no mapa para inserir texto ou número. Depois ajuste rotação, tamanho e borda.',
-    point: 'Ponto: toque para inserir referência.',
-    area: 'Área: toque ponto por ponto para criar território/área, inclusive côncava. Use “Concluir área”.',
-    focus: 'Foco: toque e arraste. O interior fica limpo e a máscara aparece fora.',
-    compass: 'Norte: toque para inserir bússola. Ajuste tamanho e rotação.',
-    legend: 'Legenda: toque para inserir. Edite o texto no painel, uma linha por item.'
+  const ICONS = {
+    cursor: '<path d="M5 3l14 7.5-6.2 1.6L10 18.5z"/>',
+    hand: '<path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.9-6-2.3l-3.6-3.6a2 2 0 0 1 2.8-2.8L7 15"/>',
+    road: '<path d="M5 21L10 3"/><path d="M19 21L14 3"/><path d="M12 6v2"/><path d="M12 11v2"/><path d="M12 16v2"/>',
+    area: '<path d="M4 7.5L10 3l10 4-2.5 12.5L6 21z"/><circle cx="4" cy="7.5" r="1.2" fill="currentColor"/><circle cx="10" cy="3" r="1.2" fill="currentColor"/><circle cx="20" cy="7" r="1.2" fill="currentColor"/>',
+    text: '<path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/>',
+    marker: '<path d="M12 21.5s-7-6.2-7-11.5a7 7 0 0 1 14 0c0 5.3-7 11.5-7 11.5z"/><circle cx="12" cy="10" r="2.6"/>',
+    focus: '<path d="M3 8V3h5"/><path d="M16 3h5v5"/><path d="M21 16v5h-5"/><path d="M8 21H3v-5"/><circle cx="12" cy="12" r="3.5"/>',
+    compass: '<circle cx="12" cy="12" r="9.5"/><path d="M12 5.5l3 9-3-1.8-3 1.8z" fill="currentColor"/>',
+    legend: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 9h2"/><path d="M12 9h5"/><path d="M7 13h2"/><path d="M12 13h5"/><path d="M7 17h2"/><path d="M12 17h3"/>',
+    crop: '<path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/>',
+    undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+    eye: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    eyeOff: '<path d="M3 3l18 18"/><path d="M10.6 5.1A10 10 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.9 3.9"/><path d="M6.6 6.6C3.9 8.4 2 12 2 12s3.5 7 10 7c1.9 0 3.6-.6 5-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/>',
+    lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+    unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/><path d="M10 11v5"/><path d="M14 11v5"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M4 16V6a2 2 0 0 1 2-2h10"/>',
+    up: '<path d="M12 19V5"/><path d="M5 12l7-7 7 7"/>',
+    down: '<path d="M12 5v14"/><path d="M19 12l-7 7-7-7"/>',
+    plus: '<path d="M12 5v14"/><path d="M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>',
+    x: '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>',
+    check: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    download: '<path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/>',
+    upload: '<path d="M12 21V9"/><path d="M7 14l5-5 5 5"/><path d="M5 3h14"/>',
+    image: '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/>',
+    globe: '<path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14"/><path d="M15 6v14"/>',
+    folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    save: '<path d="M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M7 3v5h8"/><rect x="7" y="13" width="10" height="8"/>',
+    share: '<path d="M4 12v7a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/>',
+    print: '<path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
+    clipboard: '<rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+    history: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+    scissors: '<circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9"/><path d="M14.5 14.5L20 20"/><path d="M8.1 8.1L12 12"/>',
+    unlink: '<path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 0 1 4 8"/><path d="M8 12h3"/><path d="M3 3l18 18"/>',
+    cross: '<path d="M12 3v18"/><path d="M3 12h18"/><circle cx="12" cy="12" r="3"/>',
+    layers: '<path d="M12 2l10 6-10 6L2 8z"/><path d="M2 16l10 6 10-6"/><path d="M2 12l10 6 10-6"/>',
+    keyboard: '<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01"/><path d="M10 9h.01"/><path d="M14 9h.01"/><path d="M18 9h.01"/><path d="M7 15h10"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+    info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><path d="M12 7.5h.01"/>',
+    chevron: '<path d="M6 9l6 6 6-6"/>',
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/>',
+    alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
   };
 
-  const fieldsByType = {
-    road: ['color', 'border-color', 'size', 'border-width', 'rounded', 'smooth', 'visible', 'locked'],
-    text: ['name', 'color', 'border-color', 'size', 'border-width', 'rotation', 'visible', 'locked'],
-    point: ['name', 'color', 'border-color', 'size', 'border-width', 'rotation', 'icon', 'visible', 'locked'],
-    area: ['name', 'color', 'border-color', 'size', 'border-width', 'opacity', 'smooth', 'visible', 'locked'],
-    focus: ['name', 'color', 'border-color', 'size', 'border-width', 'opacity', 'rotation', 'shape', 'visible', 'locked'],
-    compass: ['color', 'size', 'border-width', 'rotation', 'visible', 'locked'],
-    legend: ['name', 'color', 'background', 'border-color', 'size', 'border-width', 'opacity', 'visible', 'locked']
-  };
-
-  const lockProtectedInputs = [
-    'nameInput', 'colorInput', 'backgroundColorInput', 'borderColorInput', 'sizeInput',
-    'borderWidthInput', 'opacityInput', 'rotationInput', 'shapeInput', 'iconInput',
-    'roundedInput', 'smoothInput'
-  ];
-
-  const lockProtectedButtons = [
-    'bringForwardBtn', 'sendBackwardBtn', 'deleteBtn', 'removePointBtn', 'splitRoadBtn', 'centerFocusBtn'
-  ];
-
-  function setup() {
-    [
-      'imageInput', 'projectInput', 'downloadJsonBtn', 'saveLocalBtn', 'openLocalBtn',
-      'deleteLocalBtn', 'newProjectBtn', 'exportPngBtn', 'finishRoadBtn', 'finishAreaBtn',
-      'cancelDrawingBtn', 'projectNameInput', 'localProjectsSelect', 'autoSaveInput',
-      'versionSelect', 'saveVersionBtn', 'restoreVersionBtn', 'nameInput', 'colorInput',
-      'backgroundColorInput', 'borderColorInput', 'sizeInput', 'borderWidthInput',
-      'opacityInput', 'rotationInput', 'shapeInput', 'iconInput', 'roundedInput',
-      'smoothInput', 'visibleInput', 'lockedInput', 'duplicateBtn', 'bringForwardBtn',
-      'sendBackwardBtn', 'centerFocusBtn', 'deleteBtn', 'removePointBtn', 'splitRoadBtn',
-      'createIntersectionsBtn', 'showNodesInput', 'nodeLabelsInput', 'snapEnabledInput',
-      'snapDistanceInput', 'undoBtn', 'redoBtn', 'fitMapBtn', 'objectList', 'propertiesPanel',
-      'emptySelectionMessage', 'toolHint', 'floatingHelp', 'nodeHint', 'selectionStatus',
-      'zoomInBtn', 'zoomOutBtn', 'toggleUiBtn', 'mobileTabs', 'mapVisibleInput',
-      'mapLockedInput', 'toggleVisibleBtn', 'toggleLockBtn'
-    ].forEach(function (id) { els[id] = document.getElementById(id); });
-    enhanceNumberControls();
-    bindLayerListEvents();
-
-    // Ferramentas de diagnóstico disponíveis no console do navegador.
-    // Use: Territorios.debugLayers() ou Territorios.testLayerButtons()
-    T.layerCommand = runLayerCommandFromInline;
-    T.debugLayers = debugLayers;
-    T.testLayerButtons = testLayerButtons;
+  function icon(name, cls) {
+    return '<svg class="ico' + (cls ? ' ' + cls : '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICONS[name] || '') + '</svg>';
   }
 
-  let lastLayerCommandKey = '';
-  let lastLayerCommandTime = 0;
-
-  function bindLayerListEvents() {
-    if (!els.objectList || els.objectList.__territoriosLayerEventsBound) return;
-    els.objectList.__territoriosLayerEventsBound = true;
-
-    // Capture=true faz os botões da lista serem tratados antes do clique do cartão.
-    els.objectList.addEventListener('click', handleLayerListClick, true);
-    els.objectList.addEventListener('pointerup', handleLayerListPointerUp, true);
-    els.objectList.addEventListener('keydown', handleLayerListKeydown, true);
+  function hydrateIcons(root) {
+    (root || document).querySelectorAll('[data-icon]').forEach((el) => {
+      if (el.dataset.hydrated) return;
+      el.innerHTML = icon(el.dataset.icon);
+      el.dataset.hydrated = '1';
+    });
   }
 
-  function stopLayerEvent(event) {
-    if (!event) return;
-    if (event.preventDefault) event.preventDefault();
-    if (event.stopPropagation) event.stopPropagation();
-    if (event.stopImmediatePropagation) event.stopImmediatePropagation();
-  }
+  const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+  const esc = U.escapeHtml;
 
-  function getEventElement(event) {
-    const target = event && event.target;
-    if (!target) return null;
-    return target.nodeType === 1 ? target : target.parentElement;
-  }
+  /* ---------- Avisos ---------- */
 
-  function isDuplicateLayerCommand(action, objectId) {
-    const key = action + ':' + (objectId || 'mapa');
-    const now = Date.now();
-    if (lastLayerCommandKey === key && now - lastLayerCommandTime < 400) return true;
-    lastLayerCommandKey = key;
-    lastLayerCommandTime = now;
-    return false;
-  }
-
-  function runLayerCommand(action, objectId, event, source) {
-    stopLayerEvent(event);
-
-    if (!action) {
-      console.warn('[Territórios][camadas] Botão sem data-layer-action.', { source: source || 'desconhecido', event: event });
-      return false;
+  function toast(message, opts) {
+    const o = opts || {};
+    const box = document.getElementById('toasts');
+    const el = h('<div class="toast ' + (o.type || '') + '">' + (o.type === 'ok' ? icon('check') : o.type === 'error' ? icon('alert') : '') + '<span>' + esc(message) + '</span></div>');
+    if (o.action) {
+      const b = document.createElement('button');
+      b.textContent = o.action.label;
+      b.onclick = () => { o.action.fn(); close(); };
+      el.appendChild(b);
     }
-
-    if (isDuplicateLayerCommand(action, objectId)) return false;
-
-    const before = action.indexOf('object-') === 0 && objectId ? T.store.objectById(objectId) : null;
-    console.debug('[Territórios][camadas] ação recebida', {
-      action: action,
-      objectId: objectId || null,
-      source: source || 'lista',
-      antes: before ? { visible: before.visible !== false, locked: !!before.locked, selected: T.state.selectedId === before.id } : null
-    });
-
-    const ok = performLayerAction(action, objectId || null);
-
-    const after = action.indexOf('object-') === 0 && objectId ? T.store.objectById(objectId) : null;
-    console.debug('[Territórios][camadas] ação finalizada', {
-      ok: ok,
-      action: action,
-      objectId: objectId || null,
-      depois: after ? { visible: after.visible !== false, locked: !!after.locked, selected: T.state.selectedId === after.id } : null
-    });
-
-    if (!ok) console.warn('[Territórios][camadas] Ação não executada.', { action: action, objectId: objectId || null });
-    return false;
+    box.appendChild(el);
+    const close = () => { el.classList.add('leave'); setTimeout(() => el.remove(), 220); };
+    setTimeout(close, o.duration || (o.action ? 6000 : 2800));
+    while (box.children.length > 3) box.firstElementChild.remove();
   }
 
-  function runLayerCommandFromInline(event, button) {
-    if (!button) return false;
-    return runLayerCommand(button.dataset.layerAction, button.dataset.objectId || null, event, 'inline');
+  /* ---------- Diálogos ---------- */
+
+  function modal(opts) {
+    const dlg = document.createElement('dialog');
+    if (opts.className) dlg.className = opts.className;
+    dlg.innerHTML = '<div class="dlg"><div class="dlg-head"><h2>' + esc(opts.title) + '</h2><button class="icon-btn" data-close aria-label="Fechar">' + icon('x') + '</button></div><div class="dlg-body"></div>' + (opts.foot !== false ? '<div class="dlg-foot"></div>' : '') + '</div>';
+    const body = dlg.querySelector('.dlg-body');
+    if (typeof opts.body === 'string') body.innerHTML = opts.body; else if (opts.body) body.appendChild(opts.body);
+    document.body.appendChild(dlg);
+    const close = (value) => { if (dlg.open) dlg.close(value || ''); };
+    dlg.addEventListener('close', () => { if (opts.onClose) opts.onClose(dlg.returnValue); setTimeout(() => dlg.remove(), 0); });
+    dlg.addEventListener('click', (e) => {
+      if (e.target === dlg) close();
+      if (e.target.closest('[data-close]')) close();
+    });
+    hydrateIcons(dlg);
+    dlg.showModal();
+    return { dlg, body, foot: dlg.querySelector('.dlg-foot'), close };
   }
 
+  function confirmDialog(opts) {
+    return new Promise((resolve) => {
+      let answered = false;
+      const m = modal({ title: opts.title, body: '<p>' + esc(opts.message) + '</p>', onClose: () => { if (!answered) resolve(false); } });
+      m.dlg.style.width = 'min(440px, calc(100vw - 24px))';
+      const cancel = h('<button class="btn">Cancelar</button>');
+      const ok = h('<button class="btn ' + (opts.danger ? 'danger' : 'primary') + '">' + esc(opts.ok || 'Confirmar') + '</button>');
+      cancel.onclick = () => m.close();
+      ok.onclick = () => { answered = true; resolve(true); m.close(); };
+      m.foot.append(cancel, ok);
+      ok.focus();
+    });
+  }
 
-  function hasEl(name) { return !!els[name]; }
+  function promptDialog(opts) {
+    return new Promise((resolve) => {
+      let answered = false;
+      const m = modal({ title: opts.title, body: (opts.message ? '<p>' + esc(opts.message) + '</p>' : '') + '<input class="input" />', onClose: () => { if (!answered) resolve(null); } });
+      m.dlg.style.width = 'min(440px, calc(100vw - 24px))';
+      const input = m.body.querySelector('input');
+      input.value = opts.value || '';
+      input.placeholder = opts.placeholder || '';
+      const ok = h('<button class="btn primary">' + esc(opts.ok || 'OK') + '</button>');
+      const submit = () => { answered = true; resolve(input.value.trim()); m.close(); };
+      ok.onclick = submit;
+      input.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+      const cancel = h('<button class="btn">Cancelar</button>');
+      cancel.onclick = () => m.close();
+      m.foot.append(cancel, ok);
+      input.select();
+    });
+  }
 
-  const numberControlSteps = {
-    sizeInput: 1,
-    borderWidthInput: 1,
-    rotationInput: 1,
-    snapDistanceInput: 1
-  };
+  /* ---------- Controles de formulário ---------- */
 
-  function enhanceNumberControls() {
-    Object.keys(numberControlSteps).forEach(function (id) {
-      const input = els[id];
-      if (!input || input.closest('.number-control')) return;
-      input.setAttribute('step', String(numberControlSteps[id]));
-      input.setAttribute('inputmode', 'numeric');
+  const PALETTE = ['#2f5fb3', '#0891b2', '#16a34a', '#facc15', '#f59e0b', '#dc2626', '#db2777', '#7c3aed', '#16203a', '#ffffff'];
 
-      const wrapper = document.createElement('div');
-      wrapper.className = 'number-control';
-      const minus = document.createElement('button');
-      const plus = document.createElement('button');
-      minus.type = 'button';
-      plus.type = 'button';
-      minus.className = 'number-step';
-      plus.className = 'number-step';
-      minus.textContent = '−';
-      plus.textContent = '+';
-      minus.setAttribute('aria-label', 'Diminuir');
-      plus.setAttribute('aria-label', 'Aumentar');
-
-      input.parentNode.insertBefore(wrapper, input);
-      wrapper.appendChild(minus);
-      wrapper.appendChild(input);
-      wrapper.appendChild(plus);
-
-      function step(direction) {
-        if (input.disabled) return;
-        const stepValue = Number(input.step || numberControlSteps[id] || 1);
-        const min = input.min === '' ? -Infinity : Number(input.min);
-        const max = input.max === '' ? Infinity : Number(input.max);
-        const current = input.value === '' ? 0 : Number(input.value);
-        const next = Math.max(min, Math.min(max, current + direction * stepValue));
-        const decimals = String(stepValue).includes('.') ? String(stepValue).split('.')[1].length : 0;
-        input.value = decimals ? next.toFixed(decimals) : String(Math.round(next));
-        if (T.store && T.store.selectedObject && T.store.selectedObject()) T.store.pushHistory();
-        input.dispatchEvent(new Event('input', { bubbles: true }));
+  function fieldHtml(f, obj, disabled) {
+    const v = obj[f.k];
+    const dis = disabled ? ' disabled' : '';
+    const id = 'f_' + f.k;
+    switch (f.t) {
+      case 'text':
+        return '<div class="field"><label for="' + id + '">' + f.label + '</label><input class="input" id="' + id + '" data-k="' + f.k + '" value="' + esc(v) + '" placeholder="' + esc(f.ph || '') + '"' + dis + ' /></div>';
+      case 'textarea':
+        return '<div class="field"><label for="' + id + '">' + f.label + '</label><textarea class="textarea" id="' + id + '" data-k="' + f.k + '" rows="' + (f.rows || 2) + '" placeholder="' + esc(f.ph || '') + '"' + dis + '>' + esc(v) + '</textarea>' + (f.help ? '<p class="note" style="margin:6px 0 0">' + f.help + '</p>' : '') + '</div>';
+      case 'color':
+        return '<div class="field"><div class="label">' + f.label + '</div><div class="color-field"><input type="color" data-k="' + f.k + '" value="' + esc(v) + '" aria-label="' + esc(f.label) + '"' + dis + ' />' +
+          (f.swatches === false ? '' : '<div class="swatches">' + PALETTE.map((c) => '<button type="button" class="swatch' + (String(v).toLowerCase() === c ? ' active' : '') + '" style="background:' + c + '" data-swatch="' + f.k + '" data-color="' + c + '" title="' + c + '"' + dis + '></button>').join('') + '</div>') + '</div></div>';
+      case 'range': {
+        const shown = f.pct ? Math.round(v * 100) + '%' : v;
+        return '<div class="field"><label for="' + id + '">' + f.label + ' <output>' + shown + '</output></label><input type="range" id="' + id + '" data-k="' + f.k + '" data-num="1" min="' + f.min + '" max="' + f.max + '" step="' + f.step + '" value="' + v + '"' + dis + ' /></div>';
       }
-
-      minus.addEventListener('click', function () { step(-1); });
-      plus.addEventListener('click', function () { step(1); });
-      input.addEventListener('wheel', function (event) {
-        event.preventDefault();
-        input.blur();
-      }, { passive: false });
-    });
-  }
-
-  function setTool(tool) {
-    T.state.tool = tool;
-    if (tool !== 'connect') T.state.connectDraft = null;
-    document.querySelectorAll('[data-tool]').forEach(function (button) {
-      button.classList.toggle('active', button.dataset.tool === tool);
-    });
-    if (els.toolHint) els.toolHint.textContent = toolHints[tool] || '';
-    updateFloatingHelp();
-    T.drawing.draw();
-  }
-
-  function refreshAll() {
-    if (els.projectNameInput) els.projectNameInput.value = T.state.projectName || '';
-    if (els.snapEnabledInput) els.snapEnabledInput.checked = !!T.state.settings.snapEnabled;
-    if (els.snapDistanceInput) els.snapDistanceInput.value = T.state.settings.snapDistance || 22;
-    if (els.autoSaveInput) els.autoSaveInput.checked = !!T.state.settings.autoSave;
-    if (els.showNodesInput) els.showNodesInput.checked = !!T.state.settings.showNodes;
-    if (els.nodeLabelsInput) els.nodeLabelsInput.checked = !!T.state.settings.nodeLabels;
-    if (els.mapVisibleInput) els.mapVisibleInput.checked = T.state.settings.mapVisible !== false;
-    if (els.mapLockedInput) els.mapLockedInput.checked = !!T.state.settings.mapLocked;
-    updateMapButtons();
-    refreshProperties();
-    refreshLayerList();
-    refreshLocalProjects();
-    refreshVersions();
-    updateDrawingButtons();
-    updateUndoRedoButtons();
-    updatePointButtons();
-    updateFloatingHelp();
-  }
-
-  function refreshProperties() {
-    const obj = T.store.selectedObject();
-    if (els.propertiesPanel) els.propertiesPanel.classList.toggle('hidden', !obj);
-    if (els.emptySelectionMessage) els.emptySelectionMessage.classList.toggle('hidden', !!obj);
-    if (!obj) {
-      updateSelectionStatus(null);
-      updateLockedFields(null);
-      return;
-    }
-
-    if (els.nameInput) els.nameInput.value = obj.name || '';
-    if (els.colorInput) els.colorInput.value = obj.color || '#2563eb';
-    if (els.backgroundColorInput) els.backgroundColorInput.value = obj.backgroundColor || '#ffffff';
-    if (els.borderColorInput) els.borderColorInput.value = obj.borderColor || '#ffffff';
-    if (els.sizeInput) els.sizeInput.value = obj.size || 16;
-    if (els.borderWidthInput) els.borderWidthInput.value = obj.borderWidth || 0;
-    if (els.opacityInput) els.opacityInput.value = obj.opacity ?? 0.45;
-    if (els.rotationInput) els.rotationInput.value = obj.rotation || 0;
-    if (els.shapeInput) els.shapeInput.value = obj.shape === 'circle' ? 'ellipse' : obj.shape || 'rect';
-    if (els.iconInput) els.iconInput.value = obj.icon || '●';
-    if (els.roundedInput) els.roundedInput.checked = obj.rounded !== false;
-    if (els.smoothInput) els.smoothInput.checked = !!obj.smooth;
-    if (els.visibleInput) els.visibleInput.checked = obj.visible !== false;
-    if (els.lockedInput) els.lockedInput.checked = !!obj.locked;
-
-    configureLabels(obj.type);
-    showRelevantFields(obj.type);
-    updateSelectionStatus(obj);
-    updateLockedFields(obj);
-    updatePointButtons();
-  }
-
-  function configureLabels(type) {
-    document.getElementById('nameLabel').textContent = type === 'legend' ? 'Texto da legenda' : type === 'road' ? 'Nome interno' : 'Texto/nome';
-    document.getElementById('colorLabel').textContent = type === 'focus' ? 'Cor da máscara externa' : type === 'legend' ? 'Cor do texto' : 'Cor principal';
-    document.getElementById('backgroundColorLabel').textContent = 'Cor de fundo';
-    document.getElementById('borderColorLabel').textContent = type === 'focus' ? 'Cor do contorno do foco' : 'Cor da borda';
-    document.getElementById('sizeLabel').textContent = type === 'road' ? 'Largura da rua' : type === 'area' ? 'Tamanho do texto da área' : 'Tamanho';
-    document.getElementById('borderWidthLabel').textContent = type === 'road' ? 'Espessura da borda da rua' : 'Espessura da borda';
-    document.getElementById('opacityLabel').textContent = type === 'focus' ? 'Opacidade da máscara externa' : type === 'area' ? 'Opacidade do preenchimento' : 'Transparência do fundo';
-  }
-
-  function showRelevantFields(type) {
-    const visible = new Set(fieldsByType[type] || []);
-    ['name', 'color', 'background', 'border-color', 'size', 'border-width', 'opacity', 'rotation', 'shape', 'icon', 'rounded', 'smooth', 'visible', 'locked'].forEach(function (name) {
-      document.querySelectorAll('.field-' + name).forEach(function (el) { el.classList.toggle('hidden', !visible.has(name)); });
-    });
-    if (els.centerFocusBtn) els.centerFocusBtn.classList.toggle('hidden', type !== 'focus');
-  }
-
-  function updateSelectionStatus(obj) {
-    if (!els.selectionStatus) return;
-    if (!obj) {
-      els.selectionStatus.className = 'selection-status';
-      els.selectionStatus.textContent = '';
-      return;
-    }
-
-    const messages = [];
-    let tone = 'info';
-    if (obj.visible === false) {
-      messages.push('Camada oculta: ela não aparece no mapa nem será exportada, mas pode ser reativada aqui ou na lista de camadas.');
-      tone = 'warn';
-    }
-    if (obj.locked) {
-      messages.push('Camada bloqueada: não pode ser movida nem editada até ser desbloqueada.');
-      tone = obj.visible === false ? 'warn' : 'info';
-    }
-
-    if (!messages.length) {
-      els.selectionStatus.className = 'selection-status';
-      els.selectionStatus.textContent = '';
-      return;
-    }
-
-    els.selectionStatus.className = 'selection-status visible ' + tone;
-    els.selectionStatus.textContent = messages.join(' ');
-  }
-
-  function updateLockedFields(obj) {
-    const locked = !!(obj && obj.locked);
-    const disabled = !obj || locked;
-    lockProtectedInputs.forEach(function (id) {
-      if (els[id]) els[id].disabled = disabled;
-    });
-
-    lockProtectedButtons.forEach(function (id) {
-      if (!els[id]) return;
-      if (id === 'centerFocusBtn' && obj && obj.type !== 'focus') return;
-      els[id].disabled = disabled;
-    });
-
-    if (els.duplicateBtn) els.duplicateBtn.disabled = !obj;
-    if (els.visibleInput) els.visibleInput.disabled = !obj;
-    if (els.lockedInput) els.lockedInput.disabled = !obj;
-    if (els.toggleVisibleBtn) {
-      els.toggleVisibleBtn.disabled = !obj;
-      els.toggleVisibleBtn.textContent = obj && obj.visible === false ? 'Mostrar camada' : 'Ocultar camada';
-    }
-    if (els.toggleLockBtn) {
-      els.toggleLockBtn.disabled = !obj;
-      els.toggleLockBtn.textContent = obj && obj.locked ? 'Desbloquear camada' : 'Bloquear camada';
-    }
-  }
-
-  function updateMapButtons() {
-    const locked = !!T.state.settings.mapLocked;
-    ['fitMapBtn', 'zoomInBtn', 'zoomOutBtn'].forEach(function (id) {
-      if (els[id]) els[id].disabled = locked;
-    });
-    document.querySelectorAll('[data-tool="pan"]').forEach(function (button) {
-      button.disabled = locked;
-    });
-    if (locked && T.state.tool === 'pan') {
-      T.state.tool = 'select';
-      document.querySelectorAll('[data-tool]').forEach(function (button) {
-        button.classList.toggle('active', button.dataset.tool === 'select');
-      });
-      if (els.toolHint) els.toolHint.textContent = toolHints.select || '';
-    }
-  }
-
-  function stopLayerButtonEvent(event) {
-    if (!event) return;
-    event.stopPropagation();
-  }
-
-  function refreshAfterLayerAction(objectId) {
-    if (objectId) T.store.selectObject(objectId);
-    refreshProperties();
-    refreshLayerList();
-    updateDrawingButtons();
-    updateUndoRedoButtons();
-    updatePointButtons();
-    updateFloatingHelp();
-    T.drawing.draw();
-    T.storage.autoSave();
-  }
-
-  function performLayerAction(action, objectId) {
-    if (action === 'object-visible' && objectId) {
-      T.store.toggleVisibility(objectId);
-      refreshAfterLayerAction(objectId);
-      return true;
-    }
-
-    if (action === 'object-lock' && objectId) {
-      T.store.toggleLock(objectId);
-      refreshAfterLayerAction(objectId);
-      return true;
-    }
-
-    if (action === 'map-visible') {
-      T.state.settings.mapVisible = !(T.state.settings.mapVisible !== false);
-      refreshAll();
-      T.drawing.draw();
-      T.storage.autoSave();
-      return true;
-    }
-
-    if (action === 'map-lock') {
-      T.state.settings.mapLocked = !T.state.settings.mapLocked;
-      if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
-      refreshAll();
-      T.drawing.draw();
-      T.storage.autoSave();
-      return true;
-    }
-
-    return false;
-  }
-
-  function makeLayerButton(text, title, action, objectId, iconState) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'layer-control-btn' + (iconState ? ' layer-control-' + iconState : '');
-    button.textContent = text;
-    button.title = title || text;
-    button.dataset.layerAction = action;
-    button.dataset.objectId = objectId || '';
-    if (iconState) button.dataset.iconState = iconState;
-    button.setAttribute('aria-label', title || text);
-
-    // Três caminhos de acionamento para cobrir mouse, toque e navegadores que
-    // tratam botões dentro de cartões de forma diferente.
-    button.addEventListener('click', function (event) {
-      runLayerCommand(action, objectId || null, event, 'direct-click');
-    });
-
-    button.addEventListener('pointerup', function (event) {
-      if (event.pointerType && event.pointerType !== 'mouse') {
-        runLayerCommand(action, objectId || null, event, 'direct-pointerup');
+      case 'number': {
+        const k = f.scale ? S.sizeFactor() : 1;
+        const max = Math.round((f.max || 100) * k);
+        const step = f.step || (k >= 4 ? Math.round(k) : 1);
+        return '<div class="field"><label for="' + id + '">' + f.label + ' <output>' + fmtNum(v) + '</output></label><input type="range" id="' + id + '" data-k="' + f.k + '" data-num="1" min="' + (f.min || 0) + '" max="' + Math.max(max, Math.ceil(v)) + '" step="' + step + '" value="' + v + '"' + dis + ' /></div>';
       }
-    });
-
-    button.onclick = function (event) {
-      return runLayerCommand(action, objectId || null, event, 'onclick-property');
-    };
-
-    return button;
+      case 'toggle':
+        return '<label class="toggle"><span>' + f.label + (f.help ? '<small>' + f.help + '</small>' : '') + '</span><input type="checkbox" data-k="' + f.k + '"' + (v ? ' checked' : '') + dis + ' /><span class="track"></span></label>';
+      case 'segmented':
+        return '<div class="field"><div class="label">' + f.label + '</div><div class="segmented">' + f.options.map(([val, lab]) => '<button type="button" data-seg="' + f.k + '" data-val="' + esc(val) + '" class="' + (String(v) === String(val) ? 'active' : '') + '"' + dis + '>' + lab + '</button>').join('') + '</div></div>';
+      case 'icons':
+        return '<div class="field"><div class="label">' + f.label + ' <output>' + esc(M.iconById(v).label) + '</output></div><div class="icon-grid">' + M.ICONS.map((ic) => '<button type="button" class="icon-choice' + (ic.id === v ? ' active' : '') + '" data-seg="' + f.k + '" data-val="' + ic.id + '" title="' + esc(ic.label) + '"' + dis + '>' + (ic.glyph ? esc(ic.glyph) : '●') + '</button>').join('') + '</div></div>';
+      case 'row':
+        return '<div class="row">' + f.items.map((it) => fieldHtml(it, obj, disabled)).join('') + '</div>';
+      default:
+        return '';
+    }
   }
 
-  function selectLayerFromList(objectId, event) {
-    if (event) stopLayerEvent(event);
-    if (!objectId) return;
-    const obj = T.store.objectById(objectId);
-    if (!obj) {
-      console.warn('[Territórios][camadas] Tentativa de selecionar camada inexistente.', objectId);
+  function fmtNum(v) { return Math.abs(v) >= 10 ? Math.round(v) : Math.round(v * 10) / 10; }
+
+  /* ---------- Esquema do inspetor por tipo ---------- */
+
+  const SCHEMA = {
+    road: [
+      { k: 'name', t: 'text', label: 'Nome da rua', ph: 'Ex.: Rua das Flores' },
+      { k: 'showLabel', t: 'toggle', label: 'Escrever o nome sobre a rua', when: (o) => !!o.name },
+      { k: 'color', t: 'color', label: 'Cor' },
+      { k: 'width', t: 'number', label: 'Largura', min: 1, max: 60, scale: true },
+      { k: 'casing', t: 'number', label: 'Contorno', min: 0, max: 20, scale: true },
+      { k: 'casingColor', t: 'color', label: 'Cor do contorno', when: (o) => o.casing > 0, swatches: false },
+      { k: 'dashed', t: 'toggle', label: 'Tracejada' },
+      { k: 'smooth', t: 'toggle', label: 'Suavizar curvas' },
+      { k: 'rounded', t: 'toggle', label: 'Pontas arredondadas' },
+      { k: 'labelSize', t: 'number', label: 'Tamanho do nome', min: 4, max: 60, scale: true, when: (o) => o.name && o.showLabel }
+    ],
+    area: [
+      { k: 'name', t: 'textarea', label: 'Nome ou número do território', ph: 'Ex.: Território 12', rows: 2 },
+      { k: 'fill', t: 'color', label: 'Preenchimento' },
+      { k: 'fillOpacity', t: 'range', label: 'Opacidade do preenchimento', min: 0, max: 1, step: 0.05, pct: true },
+      { k: 'stroke', t: 'color', label: 'Borda' },
+      { k: 'strokeWidth', t: 'number', label: 'Espessura da borda', min: 0, max: 30, scale: true },
+      { k: 'dashed', t: 'toggle', label: 'Borda tracejada' },
+      { k: 'smooth', t: 'toggle', label: 'Suavizar contorno' },
+      { k: 'labelSize', t: 'number', label: 'Tamanho do nome', min: 4, max: 140, scale: true, when: (o) => !!o.name },
+      { k: 'labelColor', t: 'color', label: 'Cor do nome', when: (o) => !!o.name }
+    ],
+    text: [
+      { k: 'text', t: 'textarea', label: 'Texto', ph: 'Nome da rua, número da casa…', rows: 2 },
+      { k: 'color', t: 'color', label: 'Cor' },
+      { k: 'size', t: 'number', label: 'Tamanho', min: 4, max: 160, scale: true },
+      { k: 'rotation', t: 'range', label: 'Rotação (°)', min: -180, max: 180, step: 1 },
+      { k: 'bold', t: 'toggle', label: 'Negrito' },
+      { k: 'haloWidth', t: 'number', label: 'Contorno claro', min: 0, max: 20, scale: true },
+      { k: 'halo', t: 'color', label: 'Cor do contorno', when: (o) => o.haloWidth > 0, swatches: false }
+    ],
+    marker: [
+      { k: 'name', t: 'text', label: 'Rótulo', ph: 'Ex.: Escola Municipal' },
+      { k: 'icon', t: 'icons', label: 'Símbolo' },
+      { k: 'style', t: 'segmented', label: 'Estilo', options: [['pin', 'Círculo'], ['symbol', 'Só símbolo']] },
+      { k: 'color', t: 'color', label: 'Cor' },
+      { k: 'size', t: 'number', label: 'Tamanho', min: 6, max: 120, scale: true },
+      { k: 'labelSize', t: 'number', label: 'Tamanho do rótulo', min: 4, max: 60, scale: true, when: (o) => !!o.name }
+    ],
+    focus: [
+      { k: 'shape', t: 'segmented', label: 'Formato', options: [['rect', 'Retângulo'], ['ellipse', 'Oval']] },
+      { k: 'name', t: 'text', label: 'Título (opcional)', ph: 'Aparece acima do foco' },
+      { k: 'maskColor', t: 'color', label: 'Cor da área de fora' },
+      { k: 'maskOpacity', t: 'range', label: 'Opacidade de fora', min: 0, max: 1, step: 0.05, pct: true },
+      { k: 'stroke', t: 'color', label: 'Contorno' },
+      { k: 'strokeWidth', t: 'number', label: 'Espessura do contorno', min: 0, max: 30, scale: true },
+      { k: 'dashed', t: 'toggle', label: 'Contorno tracejado' }
+    ],
+    compass: [
+      { k: 'color', t: 'color', label: 'Cor' },
+      { k: 'size', t: 'number', label: 'Tamanho', min: 10, max: 300, scale: true },
+      { k: 'rotation', t: 'range', label: 'Rotação (°)', min: -180, max: 180, step: 1 }
+    ],
+    legend: [
+      { k: 'title', t: 'text', label: 'Título', ph: 'Legenda' },
+      { k: 'auto', t: 'toggle', label: 'Montar automaticamente', help: 'Lista áreas com nome, ruas e símbolos usados no mapa.' },
+      { k: 'text', t: 'textarea', label: 'Linhas extras', ph: 'Uma informação por linha', rows: 3 },
+      { k: 'size', t: 'number', label: 'Tamanho do texto', min: 4, max: 60, scale: true },
+      { k: 'color', t: 'color', label: 'Cor do texto' },
+      { k: 'bg', t: 'color', label: 'Fundo', swatches: false },
+      { k: 'bgOpacity', t: 'range', label: 'Opacidade do fundo', min: 0, max: 1, step: 0.05, pct: true },
+      { k: 'borderWidth', t: 'number', label: 'Borda', min: 0, max: 10, step: 0.5, scale: true }
+    ]
+  };
+
+  function displayName(obj) {
+    if (obj.type === 'text') return (obj.text || 'Texto').split('\n')[0];
+    if (obj.type === 'legend') return obj.title || 'Legenda';
+    if (obj.name) return obj.name.split('\n')[0];
+    if (obj.type === 'marker') return M.iconById(obj.icon).label;
+    const same = S.doc.objects.filter((o) => o.type === obj.type);
+    return M.TYPES[obj.type].label + (same.length > 1 ? ' ' + (same.indexOf(obj) + 1) : '');
+  }
+
+  function swatchFor(obj) {
+    switch (obj.type) {
+      case 'road': return { bg: obj.color };
+      case 'area': return { bg: U.hexToRgba(obj.fill, Math.max(0.45, obj.fillOpacity)), border: obj.stroke };
+      case 'marker': return { bg: obj.color, glyph: M.iconById(obj.icon).glyph || '●' };
+      case 'text': return { bg: '#ffffff', glyph: 'T', color: obj.color };
+      case 'focus': return { bg: '#ffffff', glyph: '◻', color: obj.stroke };
+      case 'compass': return { bg: '#ffffff', glyph: 'N', color: obj.color };
+      default: return { bg: obj.bg || '#ffffff', glyph: '≡', color: obj.color };
+    }
+  }
+
+  /* ---------- Inspetor ---------- */
+
+  const inspectorEl = () => document.getElementById('inspector');
+  let inspectorKey = '';
+
+  function renderInspector(force) {
+    const el = inspectorEl();
+    const obj = S.selected();
+    const key = obj ? obj.id + '|' + S.sel.node : 'none';
+    // Não recria os campos enquanto a pessoa digita: só atualiza os demais valores.
+    if (!force && key === inspectorKey && el.contains(document.activeElement) && document.activeElement.matches('input:not([type=checkbox]):not([type=range]),textarea')) {
+      syncValues(el, obj);
       return;
     }
-    T.store.selectObject(objectId);
-    refreshProperties();
-    refreshLayerList();
-    updateDrawingButtons();
-    updateUndoRedoButtons();
-    updatePointButtons();
-    updateFloatingHelp();
-    T.drawing.draw();
-    console.debug('[Territórios][camadas] camada selecionada pela lista', {
-      objectId: objectId,
-      visible: obj.visible !== false,
-      locked: !!obj.locked
-    });
-  }
+    inspectorKey = key;
+    if (!obj) { el.innerHTML = emptyInspector(); hydrateIcons(el); bindEmpty(el); return; }
 
-  function handleLayerListPointerUp(event) {
-    // Em telas de toque, alguns navegadores geram pointerup de forma mais confiável
-    // do que click em botões pequenos dentro de elementos roláveis.
-    if (!event.pointerType || event.pointerType === 'mouse') return;
-    handleLayerListClick(event, 'delegated-pointerup');
-  }
+    const locked = !!obj.locked;
+    let html = '<div class="inspector-head"><div class="type-badge">' + icon(M.TYPES[obj.type].icon) + '</div><div class="grow"><strong>' + esc(displayName(obj)) + '</strong><small>' + M.TYPES[obj.type].label + (obj.visible === false ? ' · oculto' : '') + (locked ? ' · bloqueado' : '') + '</small></div>' +
+      '<button class="icon-btn small" data-act="visible" title="' + (obj.visible === false ? 'Mostrar' : 'Ocultar') + '">' + icon(obj.visible === false ? 'eyeOff' : 'eye') + '</button>' +
+      '<button class="icon-btn small" data-act="lock" title="' + (locked ? 'Desbloquear' : 'Bloquear') + '">' + icon(locked ? 'lock' : 'unlock') + '</button></div>';
 
-  function handleLayerListClick(event, source) {
-    if (!els.objectList) return;
-    const target = getEventElement(event);
-    if (!target) return;
+    if (locked) html += '<div class="callout warn">' + icon('lock') + '<div>Item bloqueado: não pode ser movido nem editado. <button class="link" data-act="lock">Desbloquear</button></div></div>';
+    if (obj.visible === false) html += '<div class="callout">' + icon('eyeOff') + '<div>Item oculto: não aparece no mapa nem na exportação. <button class="link" data-act="visible">Mostrar</button></div></div>';
 
-    const actionButton = target.closest('button[data-layer-action], [data-layer-action]');
-    if (actionButton && els.objectList.contains(actionButton)) {
-      runLayerCommand(actionButton.dataset.layerAction, actionButton.dataset.objectId || null, event, source || 'delegated-click');
-      return;
+    if (S.isPath(obj) && S.sel.node && obj.points.includes(S.sel.node)) html += vertexSection(obj, locked);
+    if (S.isPath(obj) && !S.sel.node && !locked) {
+      html += '<div class="callout">' + icon('info') + '<div>Arraste os pontos para ajustar. Arraste os pontos menores do meio para criar curvas. Solte um ponto sobre outro para conectar.</div></div>';
     }
 
-    const item = target.closest('.layer-item[data-object-id]');
-    if (!item || !els.objectList.contains(item)) return;
-    selectLayerFromList(item.dataset.objectId, event);
+    html += '<div class="section">' + SCHEMA[obj.type].filter((f) => !f.when || f.when(obj)).map((f) => fieldHtml(f, obj, locked)).join('') + '</div>';
+    html += actionsSection(obj, locked);
+    el.innerHTML = html;
+    bindInspector(el, obj);
   }
 
-  function handleLayerListKeydown(event) {
-    if (!els.objectList || (event.key !== 'Enter' && event.key !== ' ')) return;
-    const target = getEventElement(event);
-    if (!target) return;
-
-    const actionButton = target.closest('button[data-layer-action], [data-layer-action]');
-    if (actionButton && els.objectList.contains(actionButton)) {
-      runLayerCommand(actionButton.dataset.layerAction, actionButton.dataset.objectId || null, event, 'delegated-keydown');
-      return;
-    }
-
-    const item = target.closest('.layer-item[data-object-id]');
-    if (!item || !els.objectList.contains(item)) return;
-    selectLayerFromList(item.dataset.objectId, event);
+  function vertexSection(obj, locked) {
+    const nodeId = S.sel.node;
+    const usage = S.nodeUsage(nodeId);
+    const idx = obj.points.indexOf(nodeId);
+    const canSplit = obj.type === 'road' && idx > 0 && idx < obj.points.length - 1;
+    const canRemove = obj.points.length > M.MIN_POINTS[obj.type];
+    let html = '<div class="section"><h3>Ponto selecionado</h3>';
+    html += '<p class="note">' + (usage > 1 ? 'Junção real: este ponto liga ' + usage + ' itens. Movê-lo move todos juntos.' : 'Ponto ' + (idx + 1) + ' de ' + obj.points.length + '. Solte-o sobre outro ponto para criar uma junção.') + '</p>';
+    html += '<div class="actions">';
+    html += '<button class="btn" data-act="removeVertex"' + (locked || !canRemove ? ' disabled' : '') + '>' + icon('trash') + 'Remover</button>';
+    html += '<button class="btn" data-act="detach"' + (locked || usage < 2 ? ' disabled' : '') + '>' + icon('unlink') + 'Desligar</button>';
+    if (obj.type === 'road') html += '<button class="btn" data-act="split"' + (locked || !canSplit ? ' disabled' : '') + '>' + icon('scissors') + 'Dividir</button>';
+    html += '</div></div>';
+    return html;
   }
 
-  function debugLayers() {
-    const items = els.objectList ? Array.from(els.objectList.querySelectorAll('.layer-item[data-object-id]')) : [];
-    const report = {
-      versao: 6,
-      objectListExiste: !!els.objectList,
-      totalObjetos: T.state.objects.length,
-      selectedId: T.state.selectedId,
-      objetos: T.state.objects.map(function (obj) {
-        return {
-          id: obj.id,
-          type: obj.type,
-          name: obj.name || defaultLayerName(obj),
-          visible: obj.visible !== false,
-          locked: !!obj.locked,
-          selected: obj.id === T.state.selectedId
-        };
-      }),
-      itensNaLista: items.map(function (item) {
-        return {
-          id: item.dataset.objectId,
-          text: item.innerText,
-          botoes: Array.from(item.querySelectorAll('[data-layer-action]')).map(function (button) {
-            return {
-              texto: button.textContent,
-              action: button.dataset.layerAction,
-              objectId: button.dataset.objectId || null,
-              disabled: !!button.disabled
-            };
-          })
-        };
-      })
-    };
-    console.table(report.objetos);
-    console.log('[Territórios][camadas] diagnóstico completo:', report);
-    return report;
+  function actionsSection(obj, locked) {
+    let extra = '';
+    if (obj.type === 'road') extra += '<button class="btn block" data-act="crossOne" style="margin-bottom:8px"' + (locked ? ' disabled' : '') + '>' + icon('cross') + 'Criar junções onde esta rua cruza outras</button>';
+    if (obj.type === 'focus' || obj.type === 'area') extra += '<button class="btn block" data-act="frameTo" style="margin-bottom:8px">' + icon('crop') + 'Enquadrar o cartão neste ' + (obj.type === 'focus' ? 'foco' : 'território') + '</button>';
+    return '<div class="section"><h3>Ações</h3>' + extra + '<div class="actions">' +
+      '<button class="btn" data-act="duplicate" title="Ctrl+D">' + icon('copy') + 'Duplicar</button>' +
+      '<button class="btn" data-act="front" title="Trazer para frente">' + icon('up') + 'Frente</button>' +
+      '<button class="btn" data-act="back" title="Enviar para trás">' + icon('down') + 'Trás</button>' +
+      '</div><button class="btn danger block" data-act="delete" style="margin-top:8px"' + (locked ? ' disabled' : '') + '>' + icon('trash') + 'Excluir</button></div>';
   }
 
-  function testLayerButtons() {
-    if (!T.state.objects.length) {
-      console.warn('[Territórios][camadas][teste] Crie uma rua ou outro item antes de rodar o teste.');
-      return null;
-    }
-
-    const obj = T.state.objects[0];
-    const original = { visible: obj.visible, locked: obj.locked, selectedId: T.state.selectedId };
-    const id = obj.id;
-    const steps = [];
-
-    function snap(label) {
-      const current = T.store.objectById(id);
-      steps.push({
-        passo: label,
-        visible: current ? current.visible !== false : null,
-        locked: current ? !!current.locked : null,
-        selected: T.state.selectedId === id,
-        existeNaLista: !!(els.objectList && els.objectList.querySelector('.layer-item[data-object-id="' + id + '"]'))
-      });
-    }
-
-    console.group('[Territórios][camadas][teste] teste automático dos botões');
-    snap('início');
-    performLayerAction('object-visible', id); snap('após ocultar/mostrar 1');
-    performLayerAction('object-visible', id); snap('após ocultar/mostrar 2');
-    performLayerAction('object-lock', id); snap('após bloquear/desbloquear 1');
-    performLayerAction('object-lock', id); snap('após bloquear/desbloquear 2');
-    selectLayerFromList(id); snap('após selecionar pela lista');
-
-    const restored = T.store.objectById(id);
-    if (restored) {
-      restored.visible = original.visible;
-      restored.locked = original.locked;
-    }
-    T.state.selectedId = original.selectedId;
-    refreshAll();
-    snap('estado restaurado');
-
-    console.table(steps);
-    console.groupEnd();
-    return steps;
-  }
-
-  function refreshLayerList() {
-    if (!els.objectList) return;
-    els.objectList.innerHTML = '';
-    const groups = {};
-    typeOrder.forEach(function (type) { groups[type] = []; });
-    T.state.objects.forEach(function (obj) { (groups[obj.type] || (groups[obj.type] = [])).push(obj); });
-
-    appendMapBaseLayer();
-
-    if (!T.state.objects.length) {
-      const empty = document.createElement('div');
-      empty.className = 'empty-message';
-      empty.textContent = 'Nenhuma camada criada ainda.';
-      els.objectList.appendChild(empty);
-      return;
-    }
-
-    typeOrder.forEach(function (type) {
-      if (!groups[type] || !groups[type].length) return;
-      const header = document.createElement('div');
-      header.className = 'layer-group';
-      header.textContent = typeLabels[type] || type;
-      els.objectList.appendChild(header);
-
-      groups[type].slice().reverse().forEach(function (obj) {
-        const div = document.createElement('div');
-        div.className = 'layer-item' + (obj.id === T.state.selectedId ? ' selected' : '') + (obj.locked ? ' locked' : '') + (obj.visible === false ? ' hidden-layer' : '');
-        div.dataset.objectId = obj.id;
-        div.tabIndex = 0;
-        div.setAttribute('role', 'button');
-        div.setAttribute('aria-label', 'Selecionar camada ' + (obj.name || defaultLayerName(obj)));
-
-        const nodes = obj.points ? obj.points.filter(function (p) { return p.nodeId && T.store.connectedCount(p.nodeId) > 1; }).length : 0;
-        const label = obj.name || defaultLayerName(obj);
-
-        const head = document.createElement('div');
-        head.className = 'layer-head';
-
-        const title = document.createElement('div');
-        title.className = 'layer-title';
-
-        const strong = document.createElement('strong');
-        strong.textContent = label;
-        title.appendChild(strong);
-
-        const small = document.createElement('small');
-        small.innerHTML = (typeLabels[obj.type] || obj.type) + (nodes ? ' · <span class="node-badge">' + nodes + ' junção(ões)</span>' : '');
-        title.appendChild(small);
-
-        const stateLine = document.createElement('div');
-        stateLine.className = 'layer-state';
-
-        const visiblePill = document.createElement('span');
-        visiblePill.className = 'state-pill' + (obj.visible === false ? ' is-hidden' : '');
-        visiblePill.textContent = obj.visible === false ? 'oculta' : 'visível';
-        stateLine.appendChild(visiblePill);
-
-        const lockPill = document.createElement('span');
-        lockPill.className = 'state-pill' + (obj.locked ? ' locked' : '');
-        lockPill.textContent = obj.locked ? 'bloqueada' : 'livre';
-        stateLine.appendChild(lockPill);
-        title.appendChild(stateLine);
-
-        const actions = document.createElement('div');
-        actions.className = 'layer-actions';
-        actions.appendChild(makeLayerButton(obj.visible === false ? '👁' : '🙈', obj.visible === false ? 'Mostrar camada' : 'Ocultar camada', 'object-visible', obj.id, obj.visible === false ? 'show' : 'hide'));
-        actions.appendChild(makeLayerButton(obj.locked ? '🔓' : '🔒', obj.locked ? 'Desbloquear camada' : 'Bloquear camada', 'object-lock', obj.id, obj.locked ? 'unlock' : 'lock'));
-
-        head.appendChild(title);
-        head.appendChild(actions);
-        div.appendChild(head);
-
-        div.addEventListener('click', function (event) {
-          if (event.target.closest('[data-layer-action]')) return;
-          selectLayerFromList(obj.id, event);
-        });
-        div.addEventListener('keydown', function (event) {
-          if (event.key === 'Enter' || event.key === ' ') {
-            selectLayerFromList(obj.id, event);
-          }
-        });
-
-        els.objectList.appendChild(div);
-      });
-    });
-  }
-
-  function appendMapBaseLayer() {
-    const header = document.createElement('div');
-    header.className = 'layer-group';
-    header.textContent = 'Mapa base';
-    els.objectList.appendChild(header);
-
-    const visible = T.state.settings.mapVisible !== false;
-    const locked = !!T.state.settings.mapLocked;
-    const div = document.createElement('div');
-    div.className = 'layer-item map-base-layer' + (!visible ? ' hidden-layer' : '') + (locked ? ' locked' : '');
-
-    const head = document.createElement('div');
-    head.className = 'layer-head';
-
-    const title = document.createElement('div');
-    title.className = 'layer-title';
-
-    const strong = document.createElement('strong');
-    strong.textContent = 'Imagem do mapa';
-    title.appendChild(strong);
-
-    const small = document.createElement('small');
-    small.textContent = T.state.image ? 'Mapa carregado' : 'Nenhum mapa carregado';
-    title.appendChild(small);
-
-    const stateLine = document.createElement('div');
-    stateLine.className = 'layer-state';
-
-    const visiblePill = document.createElement('span');
-    visiblePill.className = 'state-pill' + (visible ? '' : ' is-hidden');
-    visiblePill.textContent = visible ? 'visível' : 'oculto';
-    stateLine.appendChild(visiblePill);
-
-    const lockPill = document.createElement('span');
-    lockPill.className = 'state-pill' + (locked ? ' locked' : '');
-    lockPill.textContent = locked ? 'bloqueado' : 'livre';
-    stateLine.appendChild(lockPill);
-    title.appendChild(stateLine);
-
-    const actions = document.createElement('div');
-    actions.className = 'layer-actions';
-    actions.appendChild(makeLayerButton(visible ? '🙈' : '👁', visible ? 'Ocultar mapa base' : 'Mostrar mapa base', 'map-visible', '', visible ? 'hide' : 'show'));
-    actions.appendChild(makeLayerButton(locked ? '🔓' : '🔒', locked ? 'Desbloquear movimento/zoom do mapa' : 'Bloquear movimento/zoom do mapa', 'map-lock', '', locked ? 'unlock' : 'lock'));
-
-    head.appendChild(title);
-    head.appendChild(actions);
-    div.appendChild(head);
-    els.objectList.appendChild(div);
-  }
-
-  function defaultLayerName(obj) {
-    return { road: 'Rua', text: 'Texto', point: 'Ponto', area: 'Área', focus: 'Foco', compass: 'Bússola', legend: 'Legenda' }[obj.type] || 'Item';
-  }
-
-  function refreshLocalProjects() {
-    if (!els.localProjectsSelect || !T.storage) return;
-    const index = T.storage.getIndex();
-    els.localProjectsSelect.innerHTML = '';
-    if (!index.length) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Nenhum mapa salvo';
-      els.localProjectsSelect.appendChild(option);
-      return;
-    }
-    index.forEach(function (item) {
-      const option = document.createElement('option');
-      option.value = item.id;
-      option.textContent = (item.name || item.id) + ' — ' + new Date(item.savedAt).toLocaleString('pt-BR');
-      els.localProjectsSelect.appendChild(option);
-    });
-  }
-
-  function refreshVersions() {
-    if (!els.versionSelect || !T.storage) return;
-    const id = T.storage.currentProjectId(T.store.currentProject());
-    const versions = T.storage.getVersions(id);
-    els.versionSelect.innerHTML = '';
-    if (!versions.length) {
-      const option = document.createElement('option');
-      option.value = '';
-      option.textContent = 'Nenhuma versão salva';
-      els.versionSelect.appendChild(option);
-      return;
-    }
-    versions.forEach(function (version) {
-      const option = document.createElement('option');
-      option.value = version.id;
-      option.textContent = new Date(version.savedAt).toLocaleString('pt-BR') + ' · ' + (version.note || 'versão');
-      els.versionSelect.appendChild(option);
-    });
-  }
-
-  function updateDrawingButtons() {
-    if (els.finishRoadBtn) els.finishRoadBtn.disabled = T.state.drawingRoad.length < 2;
-    if (els.finishAreaBtn) els.finishAreaBtn.disabled = T.state.drawingArea.length < 3;
-    if (els.cancelDrawingBtn) els.cancelDrawingBtn.disabled = T.state.drawingRoad.length === 0 && T.state.drawingArea.length === 0 && !T.state.drawingFocus;
-  }
-
-  function updateUndoRedoButtons() {
-    if (els.undoBtn) els.undoBtn.disabled = !T.store.canUndo();
-    if (els.redoBtn) els.redoBtn.disabled = !T.store.canRedo();
-  }
-
-  function updatePointButtons() {
-    const obj = T.store.selectedObject();
-    const selectedPoint = T.state.selectedPoint;
-    if (els.removePointBtn) els.removePointBtn.disabled = !selectedPoint || !obj || !obj.points || obj.locked;
-    if (els.splitRoadBtn) els.splitRoadBtn.disabled = !(selectedPoint && obj && obj.type === 'road' && selectedPoint.index > 0 && selectedPoint.index < obj.points.length - 1 && !obj.locked);
-  }
-
-  function updateFloatingHelp() {
-    if (!els.floatingHelp) return;
-    let message = T.state.image ? toolHints[T.state.tool] : 'Carregue uma imagem do mapa para começar.';
-    const selected = T.store.selectedObject();
-    if (T.state.connectDraft) message = 'Conectar: primeiro nó selecionado. Toque no segundo nó para criar a junção.';
-    if (T.state.selectedPoint) message = 'Ponto selecionado. Arraste para mover, remova o ponto ou divida a rua se for um ponto intermediário.';
-    if (selected && selected.locked) message = 'Camada bloqueada. Desbloqueie no painel ou na lista de camadas para editar.';
-    if (selected && selected.visible === false) message = 'Camada oculta selecionada. Use “Mostrar camada” ou o olho na lista para exibir novamente.';
-    els.floatingHelp.textContent = message || '';
-  }
-
-  function applyPropertyInput() {
-    const obj = T.store.selectedObject();
+  function syncValues(el, obj) {
     if (!obj) return;
-    if (els.nameInput) obj.name = els.nameInput.value;
-    if (els.colorInput) obj.color = els.colorInput.value;
-    if (els.backgroundColorInput) obj.backgroundColor = els.backgroundColorInput.value;
-    if (els.borderColorInput) obj.borderColor = els.borderColorInput.value;
-    if (els.sizeInput) obj.size = Number(els.sizeInput.value) || 1;
-    if (els.borderWidthInput) obj.borderWidth = Number(els.borderWidthInput.value) || 0;
-    if (els.opacityInput) obj.opacity = Number(els.opacityInput.value);
-    if (els.rotationInput) obj.rotation = Number(els.rotationInput.value) || 0;
-    if (els.shapeInput) obj.shape = els.shapeInput.value;
-    if (els.iconInput) obj.icon = els.iconInput.value;
-    if (els.roundedInput) obj.rounded = els.roundedInput.checked;
-    if (els.smoothInput) obj.smooth = els.smoothInput.checked;
-    if (els.visibleInput) obj.visible = els.visibleInput.checked;
-    if (els.lockedInput) obj.locked = els.lockedInput.checked;
-    if (T.store.rememberStyle) T.store.rememberStyle(obj);
-    updateSelectionStatus(obj);
-    updateLockedFields(obj);
-    refreshLayerList();
-    updatePointButtons();
-    updateFloatingHelp();
-    T.drawing.draw();
-    T.storage.autoSave();
-  }
-
-  function bindPropertyInputs() {
-    [els.nameInput, els.colorInput, els.backgroundColorInput, els.borderColorInput, els.sizeInput, els.borderWidthInput, els.opacityInput, els.rotationInput, els.shapeInput, els.iconInput, els.roundedInput, els.smoothInput, els.visibleInput, els.lockedInput].filter(Boolean).forEach(function (input) {
-      input.addEventListener('focus', function () { if (T.store.selectedObject() && !input.disabled) T.store.pushHistory(); });
-      input.addEventListener('input', applyPropertyInput);
-      input.addEventListener('change', applyPropertyInput);
+    el.querySelectorAll('[data-k]').forEach((input) => {
+      if (input === document.activeElement) return;
+      const v = obj[input.dataset.k];
+      if (input.type === 'checkbox') input.checked = !!v;
+      else if (v != null) input.value = v;
     });
   }
 
-  function bindSettingsInputs() {
-    if (els.projectNameInput) els.projectNameInput.addEventListener('input', function () { T.state.projectName = els.projectNameInput.value; T.storage.autoSave(); refreshVersions(); });
-    if (els.snapEnabledInput) els.snapEnabledInput.addEventListener('change', function () { T.state.settings.snapEnabled = els.snapEnabledInput.checked; T.storage.autoSave(); });
-    if (els.snapDistanceInput) els.snapDistanceInput.addEventListener('input', function () { T.state.settings.snapDistance = Number(els.snapDistanceInput.value) || 22; });
-    if (els.autoSaveInput) els.autoSaveInput.addEventListener('change', function () { T.state.settings.autoSave = els.autoSaveInput.checked; T.storage.autoSave(); });
-    if (els.showNodesInput) els.showNodesInput.addEventListener('change', function () { T.state.settings.showNodes = els.showNodesInput.checked; T.drawing.draw(); T.storage.autoSave(); });
-    if (els.nodeLabelsInput) els.nodeLabelsInput.addEventListener('change', function () { T.state.settings.nodeLabels = els.nodeLabelsInput.checked; T.drawing.draw(); T.storage.autoSave(); });
-    if (els.mapVisibleInput) els.mapVisibleInput.addEventListener('change', function () {
-      T.state.settings.mapVisible = els.mapVisibleInput.checked;
-      refreshLayerList();
-      T.drawing.draw();
-      T.storage.autoSave();
+  function readValue(input) {
+    if (input.type === 'checkbox') return input.checked;
+    if (input.dataset.num) return Number(input.value);
+    return input.value;
+  }
+
+  function bindInspector(el, obj) {
+    const id = obj.id;
+    el.querySelectorAll('[data-k]').forEach((input) => {
+      const k = input.dataset.k;
+      const apply = () => {
+        const v = readValue(input);
+        S.update(id, { [k]: v }, 'insp:' + id + ':' + k);
+        const out = input.closest('.field') && input.closest('.field').querySelector('output');
+        if (out && input.type === 'range') {
+          const f = findField(obj.type, k);
+          out.textContent = f && f.pct ? Math.round(v * 100) + '%' : fmtNum(v);
+        }
+      };
+      input.addEventListener('input', apply);
+      input.addEventListener('change', () => { apply(); S.breakMerge(); renderInspector(true); });
     });
-    if (els.mapLockedInput) els.mapLockedInput.addEventListener('change', function () {
-      T.state.settings.mapLocked = els.mapLockedInput.checked;
-      if (T.state.settings.mapLocked && T.state.tool === 'pan') setTool('select');
-      updateMapButtons();
-      refreshLayerList();
-      T.drawing.draw();
-      T.storage.autoSave();
+    el.querySelectorAll('[data-swatch]').forEach((b) => b.addEventListener('click', () => {
+      S.update(id, { [b.dataset.swatch]: b.dataset.color });
+      S.breakMerge();
+      renderInspector(true);
+    }));
+    el.querySelectorAll('[data-seg]').forEach((b) => b.addEventListener('click', () => {
+      S.update(id, { [b.dataset.seg]: b.dataset.val });
+      S.breakMerge();
+      renderInspector(true);
+    }));
+    el.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => A().objectAction(b.dataset.act, id)));
+  }
+
+  function findField(type, k) {
+    for (const f of SCHEMA[type]) {
+      if (f.k === k) return f;
+      if (f.items) { const g = f.items.find((i) => i.k === k); if (g) return g; }
+    }
+    return null;
+  }
+
+  function emptyInspector() {
+    const objs = S.doc.objects;
+    const count = (t) => objs.filter((o) => o.type === t).length;
+    const roads = count('road');
+    return '<div class="empty">' + icon('cursor') + '<strong>Nada selecionado</strong><p>Toque em um item no mapa para editar, ou escolha uma ferramenta para desenhar.</p>' +
+      (roads > 1 ? '<button class="btn small" data-empty="cross">' + icon('cross') + 'Criar junções nos cruzamentos</button>' : '') +
+      '<div class="stats"><div class="stat"><b>' + roads + '</b><span>ruas</span></div><div class="stat"><b>' + count('area') + '</b><span>áreas</span></div><div class="stat"><b>' + (count('marker') + count('text')) + '</b><span>anotações</span></div></div></div>' +
+      '<div class="section kbd-only"><h3>Atalhos úteis</h3><div class="shortcut-list">' +
+      '<span><kbd>R</kbd></span><span>Desenhar rua</span><span><kbd>A</kbd></span><span>Desenhar área</span>' +
+      '<span><kbd>Enter</kbd></span><span>Concluir desenho</span><span><kbd>Esc</kbd></span><span>Cancelar / voltar a selecionar</span>' +
+      '<span><kbd>Espaço</kbd></span><span>Segure para mover o mapa</span><span><kbd>Ctrl</kbd>+<kbd>V</kbd></span><span>Colar print como mapa base</span>' +
+      '</div><p class="note" style="margin-top:10px"><button class="link" data-empty="shortcuts">Ver todos os atalhos</button></p></div>';
+  }
+
+  function bindEmpty(el) {
+    const cross = el.querySelector('[data-empty="cross"]');
+    if (cross) cross.onclick = () => A().crossAll();
+    const sc = el.querySelector('[data-empty="shortcuts"]');
+    if (sc) sc.onclick = openShortcuts;
+  }
+
+  /* ---------- Camadas ---------- */
+
+  function renderLayers() {
+    const el = document.getElementById('layers');
+    const objs = S.doc.objects;
+    document.getElementById('layerCount').textContent = objs.length ? objs.length : '';
+    let html = '';
+    M.GROUPS.forEach((g) => {
+      const list = objs.filter((o) => g.types.includes(o.type)).reverse();
+      if (!list.length) return;
+      html += '<div class="layer-group-title">' + g.label + '</div>';
+      list.forEach((o) => {
+        const sw = swatchFor(o);
+        html += '<div class="layer' + (o.id === S.sel.id ? ' selected' : '') + (o.visible === false ? ' is-hidden' : '') + '" data-id="' + o.id + '" tabindex="0" role="button">' +
+          '<span class="layer-swatch" style="background:' + sw.bg + ';' + (sw.border ? 'border:2px solid ' + sw.border + ';' : '') + (sw.color ? 'color:' + sw.color + ';' : '') + '">' + esc(sw.glyph || '') + '</span>' +
+          '<span class="layer-name">' + esc(displayName(o)) + '</span>' +
+          '<button class="icon-btn small ' + (o.visible === false ? 'warn' : '') + '" data-layer="visible" title="' + (o.visible === false ? 'Mostrar' : 'Ocultar') + '">' + icon(o.visible === false ? 'eyeOff' : 'eye') + '</button>' +
+          '<button class="icon-btn small ' + (o.locked ? 'on' : '') + '" data-layer="lock" title="' + (o.locked ? 'Desbloquear' : 'Bloquear') + '">' + icon(o.locked ? 'lock' : 'unlock') + '</button></div>';
+      });
+    });
+    const b = S.doc.base;
+    html += '<div class="layer-group-title">Mapa base</div><div class="layer' + (b.visible ? '' : ' is-hidden') + '" data-base="1">' +
+      '<span class="layer-swatch" style="background:var(--surface-3);color:var(--muted)">' + icon('image') + '</span>' +
+      '<span class="layer-name">' + (b.imageId ? 'Imagem do mapa' : 'Sem mapa base') + (b.imageId ? '<small>' + b.width + '×' + b.height + '</small>' : '') + '</span>' +
+      (b.imageId ? '<button class="icon-btn small ' + (b.visible ? '' : 'warn') + '" data-layer="baseVisible" title="' + (b.visible ? 'Ocultar' : 'Mostrar') + '">' + icon(b.visible ? 'eye' : 'eyeOff') + '</button>' : '') + '</div>';
+    if (!objs.length) html = '<div class="empty">' + icon('layers') + '<strong>Nenhum item ainda</strong><p>Tudo que você desenhar aparece aqui, organizado por tipo.</p></div>' + html;
+    el.innerHTML = html;
+  }
+
+  function bindLayers() {
+    const el = document.getElementById('layers');
+    el.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-layer]');
+      const row = e.target.closest('.layer');
+      if (!row) return;
+      if (btn) {
+        e.stopPropagation();
+        if (btn.dataset.layer === 'baseVisible') { S.setDocField('base.visible', !S.doc.base.visible); return; }
+        A().objectAction(btn.dataset.layer, row.dataset.id);
+        return;
+      }
+      if (row.dataset.id) A().selectAndReveal(row.dataset.id);
+      else if (row.dataset.base) switchTab('settings');
+    });
+    el.addEventListener('dblclick', (e) => {
+      const row = e.target.closest('.layer[data-id]');
+      if (row) A().zoomToObject(row.dataset.id);
+    });
+    el.addEventListener('keydown', (e) => {
+      const row = e.target.closest('.layer[data-id]');
+      if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); A().selectAndReveal(row.dataset.id); }
     });
   }
 
-  T.ui = { setup, els, setTool, refreshAll, refreshProperties, refreshLayerList, refreshLocalProjects, refreshVersions, updateDrawingButtons, updateUndoRedoButtons, updatePointButtons, updateFloatingHelp, bindPropertyInputs, bindSettingsInputs, defaultLayerName, updateMapButtons, runLayerCommandFromInline, debugLayers, testLayerButtons };
+  /* ---------- Ajustes do mapa ---------- */
+
+  function renderSettings() {
+    const el = document.getElementById('settings');
+    if (el.contains(document.activeElement) && document.activeElement.type === 'range') return;
+    const d = S.doc;
+    const b = d.base;
+    const preset = M.FRAMES[d.frame.preset] || M.FRAMES.card;
+    let html = '';
+    if (!App.storage.isPersistent()) html += '<div class="callout warn">' + icon('alert') + '<div>Este navegador não permite salvar automaticamente (modo privado?). Use <b>Exportar › Backup</b> para não perder o trabalho.</div></div>';
+
+    html += '<div class="section"><h3>Cartão</h3><div class="field"><label for="framePreset">Formato de impressão</label><select class="select" id="framePreset">' +
+      Object.keys(M.FRAMES).map((k) => '<option value="' + k + '"' + (k === d.frame.preset ? ' selected' : '') + '>' + M.FRAMES[k].label + '</option>').join('') + '</select></div>' +
+      '<p class="note">A área do cartão é exatamente o que será exportado e impresso (' + String(preset.w).replace('.', ',') + ' × ' + String(preset.h).replace('.', ',') + ' cm). Use a ferramenta <b>Cartão</b> para movê-la ou redimensioná-la.</p>' +
+      '<div class="actions" style="grid-template-columns:1fr 1fr"><button class="btn" data-set="frameTool">' + icon('crop') + 'Ajustar</button><button class="btn" data-set="frameView">' + icon('target') + 'Usar a tela</button></div>' +
+      '<label class="toggle" style="margin-top:8px"><span>Escurecer fora do cartão</span><input type="checkbox" data-doc="settings.dimOutside"' + (d.settings.dimOutside ? ' checked' : '') + ' /><span class="track"></span></label></div>';
+
+    html += '<div class="section"><h3>Mapa base</h3>';
+    if (b.imageId) {
+      html += '<label class="toggle"><span>Mostrar mapa base</span><input type="checkbox" data-doc="base.visible"' + (b.visible ? ' checked' : '') + ' /><span class="track"></span></label>' +
+        '<div class="field"><label for="baseOpacity">Intensidade <output>' + Math.round(b.opacity * 100) + '%</output></label><input type="range" id="baseOpacity" data-doc="base.opacity" min="0.1" max="1" step="0.05" value="' + b.opacity + '" /></div>' +
+        '<label class="toggle"><span>Preto e branco<small>Destaca as ruas desenhadas</small></span><input type="checkbox" data-doc="base.grayscale"' + (b.grayscale ? ' checked' : '') + ' /><span class="track"></span></label>' +
+        (b.attribution ? '<p class="note">Fonte: ' + esc(b.attribution) + ' (incluída na exportação)</p>' : '') +
+        '<div class="actions" style="grid-template-columns:1fr 1fr;margin-top:8px"><button class="btn" data-set="replaceImage">' + icon('image') + 'Trocar imagem</button><button class="btn" data-set="osm">' + icon('globe') + 'Buscar no mapa</button></div>' +
+        '<button class="btn danger block" style="margin-top:8px" data-set="removeBase">' + icon('trash') + 'Remover mapa base</button>';
+    } else {
+      html += '<p class="note">Sem mapa de fundo. Use um print ou capture uma região do OpenStreetMap.</p><div class="actions" style="grid-template-columns:1fr 1fr"><button class="btn" data-set="replaceImage">' + icon('image') + 'Usar imagem</button><button class="btn" data-set="osm">' + icon('globe') + 'Buscar no mapa</button></div>';
+    }
+    html += '</div>';
+
+    html += '<div class="section"><h3>Desenho</h3>' +
+      '<label class="toggle"><span>Encaixar em pontos e ruas próximas<small>Segure Alt para desativar na hora</small></span><input type="checkbox" data-doc="settings.snap"' + (d.settings.snap ? ' checked' : '') + ' /><span class="track"></span></label>' +
+      '<label class="toggle"><span>Junções automáticas<small>Ao concluir uma rua, liga os cruzamentos</small></span><input type="checkbox" data-doc="settings.autoCross"' + (d.settings.autoCross ? ' checked' : '') + ' /><span class="track"></span></label>' +
+      '<label class="toggle"><span>Mostrar pontos de junção</span><input type="checkbox" data-doc="settings.showNodes"' + (d.settings.showNodes ? ' checked' : '') + ' /><span class="track"></span></label></div>';
+
+    html += '<div class="section"><h3>Versões</h3><p class="note">O mapa é salvo automaticamente a cada alteração. Versões são pontos de retorno: uma é criada a cada 10 minutos de edição.</p>' +
+      '<button class="btn block" data-set="saveVersion">' + icon('history') + 'Salvar versão agora</button><div id="versionList" style="margin-top:8px"></div></div>';
+
+    el.innerHTML = html;
+    bindSettings(el);
+    renderVersions();
+  }
+
+  function bindSettings(el) {
+    el.querySelector('#framePreset').addEventListener('change', (e) => A().setFramePreset(e.target.value));
+    el.querySelectorAll('[data-doc]').forEach((input) => {
+      const path = input.dataset.doc;
+      const apply = () => {
+        const v = input.type === 'checkbox' ? input.checked : Number(input.value);
+        S.setDocField(path, v);
+        const out = input.closest('.field') && input.closest('.field').querySelector('output');
+        if (out) out.textContent = Math.round(v * 100) + '%';
+      };
+      input.addEventListener(input.type === 'range' ? 'input' : 'change', apply);
+      if (input.type === 'range') input.addEventListener('change', () => S.breakMerge());
+    });
+    el.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => A().settingsAction(b.dataset.set)));
+  }
+
+  async function renderVersions() {
+    const box = document.getElementById('versionList');
+    if (!box) return;
+    const list = await App.storage.listVersions(S.doc.id).catch(() => []);
+    if (!list.length) { box.innerHTML = '<p class="note" style="margin:0">Nenhuma versão ainda.</p>'; return; }
+    box.innerHTML = list.slice(0, 12).map((v) => '<div class="version"><div class="grow">' + esc(v.label) + '<small>' + U.formatDateTime(v.savedAt) + ' · ' + v.objects + ' itens</small></div><button class="btn small" data-version="' + v.id + '">Restaurar</button></div>').join('');
+    box.querySelectorAll('[data-version]').forEach((b) => b.addEventListener('click', () => A().restoreVersion(b.dataset.version)));
+  }
+
+  /* ---------- Abas e painel ---------- */
+
+  function switchTab(name) {
+    document.querySelectorAll('.tabs [role="tab"]').forEach((t) => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.tab-body').forEach((b) => { b.hidden = b.dataset.body !== name; });
+    document.getElementById('panel').classList.remove('collapsed');
+    if (name === 'settings') renderSettings();
+    App.editor && App.editor.resize();
+  }
+
+  function currentTab() {
+    const t = document.querySelector('.tabs [role="tab"].active');
+    return t ? t.dataset.tab : 'item';
+  }
+
+  /* ---------- Galeria de mapas ---------- */
+
+  async function openProjects() {
+    const body = h('<div><div class="dlg-actions" style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap"></div><div class="gallery"></div></div>');
+    const m = modal({ title: 'Meus mapas', body, className: 'projects-dialog', foot: false });
+    m.dlg.style.width = 'min(920px, calc(100vw - 24px))';
+    const bar = body.querySelector('.dlg-actions');
+    const add = h('<button class="btn primary">' + icon('plus') + 'Novo mapa</button>');
+    add.onclick = () => { m.close(); A().newProject(); };
+    const imp = h('<button class="btn">' + icon('upload') + 'Abrir backup .json</button>');
+    imp.onclick = () => { m.close(); A().pickJson(); };
+    bar.append(add, imp);
+
+    const grid = body.querySelector('.gallery');
+    const draw = async () => {
+      const list = await App.storage.listProjects();
+      if (!list.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1">' + icon('folder') + '<strong>Nenhum mapa salvo</strong><p>Os mapas ficam guardados neste navegador.</p></div>'; hydrateIcons(grid); return; }
+      grid.innerHTML = list.map((p) => '<div class="card' + (p.id === S.doc.id ? ' current' : '') + '" data-id="' + p.id + '" tabindex="0">' +
+        '<div class="card-thumb" style="' + (p.thumb ? 'background-image:url(' + p.thumb + ')' : '') + '"></div>' +
+        '<div class="card-body"><div class="grow"><strong>' + esc(p.name || 'Mapa sem nome') + '</strong><small>' + (p.id === S.doc.id ? 'Aberto agora · ' : '') + U.relativeTime(p.updatedAt) + ' · ' + p.objects + ' itens</small></div>' +
+        '<button class="icon-btn small" data-card="duplicate" title="Duplicar">' + icon('copy') + '</button>' +
+        '<button class="icon-btn small" data-card="json" title="Baixar backup">' + icon('download') + '</button>' +
+        '<button class="icon-btn small" data-card="delete" title="Excluir">' + icon('trash') + '</button></div></div>').join('');
+    };
+    grid.addEventListener('click', async (e) => {
+      const card = e.target.closest('.card');
+      if (!card) return;
+      const act = e.target.closest('[data-card]');
+      const id = card.dataset.id;
+      if (!act) { m.close(); A().openProject(id); return; }
+      if (act.dataset.card === 'delete') {
+        const ok = await confirmDialog({ title: 'Excluir mapa?', message: 'O mapa e todas as versões serão apagados deste navegador. Isso não pode ser desfeito.', ok: 'Excluir', danger: true });
+        if (!ok) return;
+        await A().deleteProject(id);
+      } else if (act.dataset.card === 'duplicate') {
+        await A().duplicateProject(id);
+      } else if (act.dataset.card === 'json') {
+        await A().exportProjectJson(id);
+      }
+      draw();
+    });
+    grid.addEventListener('keydown', (e) => {
+      const card = e.target.closest('.card');
+      if (card && e.key === 'Enter' && e.target === card) { m.close(); A().openProject(card.dataset.id); }
+    });
+    await A().saveNow();
+    draw();
+  }
+
+  function openShortcuts() {
+    const rows = [
+      ['V', 'Selecionar e editar'], ['H', 'Mover o mapa (ou segure Espaço)'], ['R', 'Rua'], ['A', 'Área / território'], ['T', 'Texto'], ['P', 'Ponto de referência'],
+      ['F', 'Foco'], ['N', 'Norte'], ['L', 'Legenda'], ['C', 'Ajustar o cartão'],
+      ['Enter', 'Concluir rua/área'], ['Backspace', 'Desfazer o último ponto (desenhando)'], ['Esc', 'Cancelar / limpar seleção'],
+      ['Shift', 'Ângulos de 15° ao desenhar · rotação em passos'], ['Alt', 'Desenhar sem encaixe'],
+      ['Delete', 'Excluir item ou ponto selecionado'], ['Ctrl+D', 'Duplicar'], ['Setas', 'Mover item (Shift = 10×)'],
+      ['Ctrl+Z', 'Desfazer'], ['Ctrl+Shift+Z', 'Refazer'], ['Ctrl+S', 'Salvar uma versão'], ['Ctrl+V', 'Colar print como mapa base'],
+      ['+ / −', 'Zoom'], ['0', 'Ver o cartão inteiro']
+    ];
+    const body = '<div class="shortcut-list">' + rows.map(([k, d]) => '<span>' + k.split(' / ').map((x) => x.split('+').map((y) => '<kbd>' + esc(y) + '</kbd>').join('+')).join(' / ') + '</span><span>' + d + '</span>').join('') + '</div>' +
+      '<p class="note" style="margin-top:14px">No celular: toque para adicionar pontos, arraste com um dedo para mover o mapa e use dois dedos para zoom.</p>';
+    const m = modal({ title: 'Atalhos', body, foot: false });
+    m.dlg.style.width = 'min(520px, calc(100vw - 24px))';
+  }
+
+  App.ui = {
+    icon, hydrateIcons, toast, modal, confirm: confirmDialog, prompt: promptDialog,
+    renderInspector, renderLayers, renderSettings, renderVersions, bindLayers, switchTab, currentTab,
+    openProjects, openShortcuts, displayName
+  };
 })();

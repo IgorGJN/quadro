@@ -1,0 +1,3006 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Diagramador de Imagens</title>
+
+    <!-- =========================================================
+         TAILWIND CSS
+    ========================================================== -->
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: "#2563eb"
+                    }
+                }
+            }
+        };
+    </script>
+
+
+    <!-- =========================================================
+         CSS
+    ========================================================== -->
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            margin: 0;
+            background: #f1f5f9;
+            color: #0f172a;
+
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+        }
+
+        button,
+        input,
+        select {
+            font: inherit;
+        }
+
+
+        /* =====================================================
+           DROPZONE
+        ====================================================== */
+
+        .dropzone {
+            transition:
+                border-color 0.2s ease,
+                background 0.2s ease,
+                transform 0.2s ease;
+        }
+
+        .dropzone.dragover {
+            border-color: #2563eb;
+            background: #eff6ff;
+            transform: scale(1.005);
+        }
+
+
+        /* =====================================================
+           ÁREA DE PREVIEW
+        ====================================================== */
+
+        #previewArea {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 24px;
+        }
+
+
+        /*
+         * A área útil de uma página A4 após as margens:
+         *
+         * A4:
+         * 21 cm × 29,7 cm
+         *
+         * Margens:
+         * 1,5 cm em cada lado
+         *
+         * Área útil:
+         * 18 cm × 26,7 cm
+         */
+
+        .print-sheet {
+
+            position: relative;
+
+            width: 18cm;
+            height: 26.7cm;
+            min-height: 26.7cm;
+
+            background: white;
+
+            overflow: hidden;
+
+            box-shadow:
+                0 10px 30px rgba(15, 23, 42, 0.12);
+
+            break-after: page;
+            page-break-after: always;
+        }
+
+
+        .print-sheet:last-child {
+
+            break-after: auto;
+            page-break-after: auto;
+        }
+
+
+        .sheet-content {
+
+            width: 18cm;
+            height: 26.7cm;
+
+            display: flex;
+
+            flex-wrap: wrap;
+
+            align-content: flex-start;
+
+            overflow: hidden;
+        }
+
+
+        /* =====================================================
+           IMAGENS
+        ====================================================== */
+
+        .print-item {
+
+            position: relative;
+
+            flex: 0 0 auto;
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+
+            overflow: hidden;
+
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+
+        .print-item img {
+
+            display: block;
+
+            width: 100%;
+            height: 100%;
+
+            object-fit: fill;
+        }
+
+
+        /* =====================================================
+           MINIATURAS
+        ====================================================== */
+
+        .thumbnail {
+
+            width: 90px;
+            height: 90px;
+
+            object-fit: contain;
+
+            background: #f8fafc;
+
+            border-radius: 8px;
+        }
+
+
+        /* =====================================================
+           BOTÃO FLUTUANTE
+        ====================================================== */
+
+        .print-floating-button {
+
+            position: fixed;
+
+            right: 24px;
+            bottom: 24px;
+
+            z-index: 100;
+
+            box-shadow:
+                0 10px 25px rgba(37, 99, 235, 0.3);
+        }
+
+
+        /* =====================================================
+           IMPRESSÃO
+        ====================================================== */
+
+        @page {
+
+            size: A4 portrait;
+
+            /*
+             * Margem física solicitada.
+             */
+            margin: 1.5cm;
+        }
+
+
+        @media print {
+
+            html,
+            body {
+
+                width: 100%;
+
+                margin: 0;
+                padding: 0;
+
+                background: white;
+            }
+
+
+            /*
+             * Esconde interface.
+             */
+
+            .no-print {
+
+                display: none !important;
+            }
+
+
+            /*
+             * Área de impressão.
+             */
+
+            #previewArea {
+
+                display: block;
+
+                margin: 0;
+                padding: 0;
+            }
+
+
+            /*
+             * Cada .print-sheet é uma página.
+             */
+
+            .print-sheet {
+
+                width: 18cm;
+                height: 26.7cm;
+                min-height: 26.7cm;
+
+                margin: 0;
+                padding: 0;
+
+                box-shadow: none;
+
+                overflow: hidden;
+
+                break-after: page;
+                page-break-after: always;
+            }
+
+
+            .print-sheet:last-child {
+
+                break-after: auto;
+                page-break-after: auto;
+            }
+
+
+            .sheet-content {
+
+                width: 18cm;
+                height: 26.7cm;
+
+                overflow: hidden;
+            }
+
+
+            .print-item {
+
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+
+
+            .print-item img {
+
+                print-color-adjust: exact;
+                -webkit-print-color-adjust: exact;
+            }
+        }
+
+
+        /* =====================================================
+           MOBILE
+        ====================================================== */
+
+        @media (max-width: 700px) {
+
+            #previewArea {
+
+                align-items: flex-start;
+
+                overflow-x: auto;
+
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+
+            .print-sheet {
+
+                flex-shrink: 0;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =========================================================
+         HEADER
+    ========================================================== -->
+
+    <header
+        class="
+            no-print
+            bg-white
+            border-b
+            border-slate-200
+            sticky
+            top-0
+            z-50
+        "
+    >
+
+        <div
+            class="
+                max-w-7xl
+                mx-auto
+                px-4
+                py-4
+            "
+        >
+
+            <div
+                class="
+                    flex
+                    flex-col
+                    md:flex-row
+                    md:items-center
+                    md:justify-between
+                    gap-3
+                "
+            >
+
+                <div>
+
+                    <h1
+                        class="
+                            text-xl
+                            font-bold
+                            text-slate-900
+                        "
+                    >
+                        Diagramador de Imagens
+                    </h1>
+
+                    <p
+                        class="
+                            text-sm
+                            text-slate-500
+                        "
+                    >
+                        Prepare imagens para impressão ou PDF em A4
+                    </p>
+
+                </div>
+
+
+                <div
+                    class="
+                        flex
+                        items-center
+                        gap-2
+                    "
+                >
+
+                    <span
+                        id="imageCounter"
+                        class="
+                            text-sm
+                            text-slate-500
+                        "
+                    >
+                        0 imagens
+                    </span>
+
+
+                    <button
+                        id="clearAllButton"
+                        type="button"
+                        class="
+                            hidden
+                            px-3
+                            py-2
+                            rounded-lg
+                            text-sm
+                            bg-red-50
+                            text-red-600
+                            hover:bg-red-100
+                            transition
+                        "
+                    >
+                        Limpar tudo
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- =========================================================
+         CONTEÚDO
+    ========================================================== -->
+
+    <main
+        class="
+            no-print
+            max-w-7xl
+            mx-auto
+            px-4
+            py-6
+        "
+    >
+
+
+        <!-- =====================================================
+             DROPZONE
+        ====================================================== -->
+
+        <section
+            id="dropzone"
+            class="
+                dropzone
+                border-2
+                border-dashed
+                border-slate-300
+                rounded-2xl
+                bg-white
+                p-8
+                text-center
+                cursor-pointer
+                hover:border-blue-400
+                hover:bg-slate-50
+            "
+        >
+
+            <input
+                id="fileInput"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                multiple
+                hidden
+            >
+
+
+            <div
+                class="
+                    flex
+                    flex-col
+                    items-center
+                "
+            >
+
+                <div
+                    class="
+                        w-14
+                        h-14
+                        rounded-full
+                        bg-blue-50
+                        text-blue-600
+                        flex
+                        items-center
+                        justify-center
+                        mb-4
+                    "
+                >
+
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="28"
+                        height="28"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+
+                        <path d="M12 16V4"></path>
+
+                        <path d="m7 9 5-5 5 5"></path>
+
+                        <path
+                            d="
+                                M20 16.5
+                                v2.5
+                                a2 2 0 0 1-2 2
+                                H6
+                                a2 2 0 0 1-2-2
+                                v-2.5
+                            "
+                        ></path>
+
+                    </svg>
+
+                </div>
+
+
+                <h2
+                    class="
+                        text-lg
+                        font-semibold
+                        text-slate-800
+                    "
+                >
+                    Arraste suas imagens aqui
+                </h2>
+
+
+                <p
+                    class="
+                        text-sm
+                        text-slate-500
+                        mt-1
+                    "
+                >
+                    ou clique para selecionar várias imagens
+                </p>
+
+
+                <p
+                    class="
+                        text-xs
+                        text-slate-400
+                        mt-3
+                    "
+                >
+                    PNG, JPG/JPEG e WebP
+                </p>
+
+            </div>
+
+        </section>
+
+
+        <!-- =====================================================
+             CONTROLES GERAIS
+        ====================================================== -->
+
+        <section class="mt-6">
+
+            <div
+                class="
+                    flex
+                    flex-col
+                    md:flex-row
+                    md:items-center
+                    md:justify-between
+                    gap-3
+                    mb-4
+                "
+            >
+
+                <div>
+
+                    <h2
+                        class="
+                            font-semibold
+                            text-slate-800
+                        "
+                    >
+                        Imagens
+                    </h2>
+
+                    <p
+                        class="
+                            text-sm
+                            text-slate-500
+                        "
+                    >
+                        Configure cada imagem individualmente.
+                    </p>
+
+                </div>
+
+
+                <div
+                    id="batchControls"
+                    class="
+                        hidden
+                        flex
+                        flex-wrap
+                        items-center
+                        gap-2
+                    "
+                >
+
+                    <button
+                        id="showBatchButton"
+                        type="button"
+                        class="
+                            px-3
+                            py-2
+                            rounded-lg
+                            bg-slate-800
+                            text-white
+                            text-sm
+                            hover:bg-slate-700
+                        "
+                    >
+                        Tamanho em lote
+                    </button>
+
+
+                    <button
+                        id="removeBordersButton"
+                        type="button"
+                        class="
+                            px-3
+                            py-2
+                            rounded-lg
+                            bg-slate-100
+                            text-slate-700
+                            text-sm
+                            hover:bg-slate-200
+                        "
+                    >
+                        Remover bordas
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 TAMANHO EM LOTE
+            ================================================== -->
+
+            <div
+                id="batchSizePanel"
+                class="
+                    hidden
+                    mb-4
+                    bg-white
+                    border
+                    border-slate-200
+                    rounded-xl
+                    p-4
+                "
+            >
+
+                <div
+                    class="
+                        grid
+                        grid-cols-2
+                        md:grid-cols-4
+                        gap-3
+                    "
+                >
+
+                    <label class="text-sm">
+
+                        <span
+                            class="
+                                block
+                                text-slate-500
+                                mb-1
+                            "
+                        >
+                            Largura
+                        </span>
+
+                        <input
+                            id="batchWidth"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value="5"
+                            class="
+                                w-full
+                                px-3
+                                py-2
+                                rounded-lg
+                                border
+                                border-slate-300
+                            "
+                        >
+
+                    </label>
+
+
+                    <label class="text-sm">
+
+                        <span
+                            class="
+                                block
+                                text-slate-500
+                                mb-1
+                            "
+                        >
+                            Altura
+                        </span>
+
+                        <input
+                            id="batchHeight"
+                            type="number"
+                            min="0.1"
+                            step="0.1"
+                            value="5"
+                            class="
+                                w-full
+                                px-3
+                                py-2
+                                rounded-lg
+                                border
+                                border-slate-300
+                            "
+                        >
+
+                    </label>
+
+
+                    <label class="text-sm">
+
+                        <span
+                            class="
+                                block
+                                text-slate-500
+                                mb-1
+                            "
+                        >
+                            Unidade
+                        </span>
+
+                        <select
+                            id="batchUnit"
+                            class="
+                                w-full
+                                px-3
+                                py-2
+                                rounded-lg
+                                border
+                                border-slate-300
+                            "
+                        >
+
+                            <option value="cm">
+                                cm
+                            </option>
+
+                            <option value="mm">
+                                mm
+                            </option>
+
+                            <option value="px">
+                                px
+                            </option>
+
+                        </select>
+
+                    </label>
+
+
+                    <div
+                        class="
+                            flex
+                            items-end
+                        "
+                    >
+
+                        <button
+                            id="applyBatchButton"
+                            type="button"
+                            class="
+                                w-full
+                                px-3
+                                py-2
+                                rounded-lg
+                                bg-blue-600
+                                text-white
+                                hover:bg-blue-700
+                            "
+                        >
+                            Aplicar
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- =================================================
+                 LISTA DE IMAGENS
+            ================================================== -->
+
+            <div
+                id="imageList"
+                class="space-y-4"
+            ></div>
+
+        </section>
+
+
+        <!-- =====================================================
+             PREVIEW TITULO
+        ====================================================== -->
+
+        <section class="mt-10">
+
+            <div class="mb-4">
+
+                <h2
+                    class="
+                        font-semibold
+                        text-slate-800
+                    "
+                >
+                    Pré-visualização
+                </h2>
+
+                <p
+                    class="
+                        text-sm
+                        text-slate-500
+                    "
+                >
+                    Simulação da área útil de uma folha A4.
+                    Espaçamento entre imagens: <strong>0,5 cm</strong>.
+                </p>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =========================================================
+         ÁREA DE PREVIEW / IMPRESSÃO
+    ========================================================== -->
+
+    <section
+        id="previewArea"
+        class="
+            px-4
+            pb-32
+        "
+    ></section>
+
+
+    <!-- =========================================================
+         BOTÃO DE IMPRESSÃO
+    ========================================================== -->
+
+    <button
+        id="printButton"
+        type="button"
+        class="
+            no-print
+            print-floating-button
+            flex
+            items-center
+            gap-2
+            px-5
+            py-3
+            rounded-full
+            bg-blue-600
+            text-white
+            font-semibold
+            hover:bg-blue-700
+            active:scale-95
+            transition
+        "
+    >
+
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+        >
+
+            <polyline
+                points="6 9 6 2 18 2 18 9"
+            ></polyline>
+
+            <path
+                d="
+                    M6 18
+                    H4
+                    a2 2 0 0 1-2-2
+                    v-5
+                    a2 2 0 0 1 2-2
+                    h16
+                    a2 2 0 0 1 2 2
+                    v5
+                    a2 2 0 0 1-2 2
+                    h-2
+                "
+            ></path>
+
+            <rect
+                x="6"
+                y="14"
+                width="12"
+                height="8"
+            ></rect>
+
+        </svg>
+
+        Imprimir / Salvar como PDF
+
+    </button>
+
+
+    <!-- =========================================================
+         JAVASCRIPT
+    ========================================================== -->
+
+    <script>
+
+        /* =====================================================
+           CONFIGURAÇÕES
+        ====================================================== */
+
+        const PAGE_WIDTH = 18;
+        const PAGE_HEIGHT = 26.7;
+
+        /*
+         * Espaçamento solicitado:
+         *
+         * 0,5 cm
+         */
+        const IMAGE_GAP = 0.5;
+
+        /*
+         * 96 pixels por polegada.
+         */
+        const PX_PER_CM = 96 / 2.54;
+
+
+        /* =====================================================
+           ESTADO
+        ====================================================== */
+
+        const state = {
+
+            images: [],
+
+            nextId: 1
+
+        };
+
+
+        /* =====================================================
+           ELEMENTOS
+        ====================================================== */
+
+        const fileInput =
+            document.getElementById("fileInput");
+
+        const dropzone =
+            document.getElementById("dropzone");
+
+        const imageList =
+            document.getElementById("imageList");
+
+        const previewArea =
+            document.getElementById("previewArea");
+
+        const imageCounter =
+            document.getElementById("imageCounter");
+
+        const clearAllButton =
+            document.getElementById("clearAllButton");
+
+        const batchControls =
+            document.getElementById("batchControls");
+
+        const batchSizePanel =
+            document.getElementById("batchSizePanel");
+
+        const showBatchButton =
+            document.getElementById("showBatchButton");
+
+        const applyBatchButton =
+            document.getElementById("applyBatchButton");
+
+        const removeBordersButton =
+            document.getElementById("removeBordersButton");
+
+        const printButton =
+            document.getElementById("printButton");
+
+
+        /* =====================================================
+           CONVERSÃO DE UNIDADES
+        ====================================================== */
+
+        function toCm(value, unit) {
+
+            value = Number(value) || 0;
+
+            if (unit === "cm") {
+                return value;
+            }
+
+            if (unit === "mm") {
+                return value / 10;
+            }
+
+            if (unit === "px") {
+                return value / PX_PER_CM;
+            }
+
+            return value;
+        }
+
+
+        function fromCm(value, unit) {
+
+            value = Number(value) || 0;
+
+            if (unit === "cm") {
+                return value;
+            }
+
+            if (unit === "mm") {
+                return value * 10;
+            }
+
+            if (unit === "px") {
+                return value * PX_PER_CM;
+            }
+
+            return value;
+        }
+
+
+        function cssSize(value, unit) {
+
+            return `${Number(value)}${unit}`;
+
+        }
+
+
+        /* =====================================================
+           UTILITÁRIOS
+        ====================================================== */
+
+        function roundNumber(number, decimals = 2) {
+
+            return Number(
+                Number(number).toFixed(decimals)
+            );
+
+        }
+
+
+        function formatFileSize(bytes) {
+
+            if (bytes < 1024) {
+
+                return `${bytes} B`;
+
+            }
+
+            if (bytes < 1024 * 1024) {
+
+                return `${(bytes / 1024).toFixed(1)} KB`;
+
+            }
+
+            return `${(
+                bytes /
+                (1024 * 1024)
+            ).toFixed(1)} MB`;
+
+        }
+
+
+        function escapeHtml(text) {
+
+            const div =
+                document.createElement("div");
+
+            div.textContent = text;
+
+            return div.innerHTML;
+
+        }
+
+
+        /* =====================================================
+           ADICIONAR ARQUIVOS
+        ====================================================== */
+
+        function addFiles(files) {
+
+            const validTypes = [
+
+                "image/png",
+
+                "image/jpeg",
+
+                "image/webp"
+
+            ];
+
+
+            [...files].forEach(file => {
+
+                if (!validTypes.includes(file.type)) {
+
+                    return;
+
+                }
+
+
+                const objectUrl =
+                    URL.createObjectURL(file);
+
+
+                const image =
+                    new Image();
+
+
+                image.onload = () => {
+
+                    /*
+                     * Tamanho inicial:
+                     *
+                     * 5 cm de largura
+                     *
+                     * Altura proporcional.
+                     */
+
+                    const initialWidth = 5;
+
+                    const ratio =
+                        image.naturalHeight /
+                        image.naturalWidth;
+
+                    const initialHeight =
+                        initialWidth * ratio;
+
+
+                    state.images.push({
+
+                        id:
+                            state.nextId++,
+
+                        file:
+
+                            file,
+
+                        url:
+
+                            objectUrl,
+
+                        naturalWidth:
+
+                            image.naturalWidth,
+
+                        naturalHeight:
+
+                            image.naturalHeight,
+
+                        width:
+
+                            roundNumber(
+                                initialWidth
+                            ),
+
+                        height:
+
+                            roundNumber(
+                                initialHeight
+                            ),
+
+                        unit:
+
+                            "cm",
+
+                        lockRatio:
+
+                            true,
+
+                        border:
+
+                            false,
+
+                        borderWidth:
+
+                            "1px",
+
+                        borderColor:
+
+                            "#000000"
+
+                    });
+
+
+                    render();
+
+                };
+
+
+                image.src =
+                    objectUrl;
+
+            });
+
+        }
+
+
+        /* =====================================================
+           DROPZONE
+        ====================================================== */
+
+        dropzone.addEventListener(
+            "click",
+            () => {
+
+                fileInput.click();
+
+            }
+        );
+
+
+        fileInput.addEventListener(
+            "change",
+            event => {
+
+                addFiles(
+                    event.target.files
+                );
+
+                fileInput.value = "";
+
+            }
+        );
+
+
+        [
+            "dragenter",
+            "dragover"
+        ].forEach(eventName => {
+
+            dropzone.addEventListener(
+                eventName,
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    dropzone.classList.add(
+                        "dragover"
+                    );
+
+                }
+            );
+
+        });
+
+
+        [
+            "dragleave",
+            "drop"
+        ].forEach(eventName => {
+
+            dropzone.addEventListener(
+                eventName,
+                event => {
+
+                    event.preventDefault();
+
+                    event.stopPropagation();
+
+                    dropzone.classList.remove(
+                        "dragover"
+                    );
+
+                }
+            );
+
+        });
+
+
+        dropzone.addEventListener(
+            "drop",
+            event => {
+
+                addFiles(
+                    event.dataTransfer.files
+                );
+
+            }
+        );
+
+
+        /* =====================================================
+           PROPORÇÃO
+        ====================================================== */
+
+        function calculateHeight(
+            image,
+            newWidth
+        ) {
+
+            const ratio =
+                image.naturalHeight /
+                image.naturalWidth;
+
+            return newWidth * ratio;
+
+        }
+
+
+        /* =====================================================
+           DUPLICAR IMAGEM
+        ====================================================== */
+
+        function duplicateImage(id) {
+
+            const index =
+                state.images.findIndex(
+                    item => item.id === id
+                );
+
+
+            if (index === -1) {
+
+                return;
+
+            }
+
+
+            const original =
+                state.images[index];
+
+
+            /*
+             * Não criamos outro arquivo.
+             *
+             * A cópia usa a mesma URL da imagem original.
+             *
+             * Assim é possível ter dezenas de cópias
+             * sem duplicar o arquivo na memória.
+             */
+
+            const copy = {
+
+                ...original,
+
+                id:
+                    state.nextId++
+
+            };
+
+
+            /*
+             * Insere imediatamente depois
+             * da imagem original.
+             */
+
+            state.images.splice(
+                index + 1,
+                0,
+                copy
+            );
+
+
+            render();
+
+        }
+
+
+        /* =====================================================
+           EXCLUIR IMAGEM
+        ====================================================== */
+
+        function removeImage(id) {
+
+            const index =
+                state.images.findIndex(
+                    item => item.id === id
+                );
+
+
+            if (index === -1) {
+
+                return;
+
+            }
+
+
+            /*
+             * Só liberamos o ObjectURL se não houver
+             * outra imagem usando aquela URL.
+             */
+
+            const url =
+                state.images[index].url;
+
+
+            state.images.splice(
+                index,
+                1
+            );
+
+
+            const stillUsingUrl =
+                state.images.some(
+                    item => item.url === url
+                );
+
+
+            if (!stillUsingUrl) {
+
+                URL.revokeObjectURL(url);
+
+            }
+
+
+            render();
+
+        }
+
+
+        /* =====================================================
+           MOVER
+        ====================================================== */
+
+        function moveImage(
+            id,
+            direction
+        ) {
+
+            const index =
+                state.images.findIndex(
+                    item => item.id === id
+                );
+
+
+            if (index === -1) {
+
+                return;
+
+            }
+
+
+            const newIndex =
+                index + direction;
+
+
+            if (
+                newIndex < 0 ||
+                newIndex >= state.images.length
+            ) {
+
+                return;
+
+            }
+
+
+            [
+                state.images[index],
+                state.images[newIndex]
+            ] = [
+
+                state.images[newIndex],
+                state.images[index]
+
+            ];
+
+
+            render();
+
+        }
+
+
+        /* =====================================================
+           RENDER DA LISTA
+        ====================================================== */
+
+        function renderImageList() {
+
+            imageList.innerHTML = "";
+
+
+            state.images.forEach(
+                (image, index) => {
+
+                    const card =
+                        document.createElement(
+                            "article"
+                        );
+
+
+                    card.className = `
+                        bg-white
+                        border
+                        border-slate-200
+                        rounded-2xl
+                        p-4
+                        shadow-sm
+                    `;
+
+
+                    card.innerHTML = `
+
+                        <div
+                            class="
+                                flex
+                                flex-col
+                                lg:flex-row
+                                gap-4
+                            "
+                        >
+
+                            <!-- MINIATURA -->
+
+                            <div
+                                class="
+                                    flex
+                                    items-center
+                                    justify-center
+                                    shrink-0
+                                "
+                            >
+
+                                <img
+                                    src="${image.url}"
+                                    class="
+                                        thumbnail
+                                        border
+                                        border-slate-200
+                                    "
+                                    alt="${escapeHtml(image.file.name)}"
+                                >
+
+                            </div>
+
+
+                            <!-- CONTEÚDO -->
+
+                            <div
+                                class="
+                                    flex-1
+                                    min-w-0
+                                "
+                            >
+
+                                <!-- CABEÇALHO -->
+
+                                <div
+                                    class="
+                                        flex
+                                        flex-col
+                                        sm:flex-row
+                                        sm:items-start
+                                        sm:justify-between
+                                        gap-2
+                                    "
+                                >
+
+                                    <div
+                                        class="min-w-0"
+                                    >
+
+                                        <h3
+                                            class="
+                                                font-semibold
+                                                text-slate-800
+                                                truncate
+                                            "
+                                            title="${escapeHtml(image.file.name)}"
+                                        >
+                                            ${escapeHtml(image.file.name)}
+                                        </h3>
+
+
+                                        <p
+                                            class="
+                                                text-xs
+                                                text-slate-400
+                                            "
+                                        >
+                                            ${image.naturalWidth}
+                                            ×
+                                            ${image.naturalHeight}px
+
+                                            ·
+
+                                            ${formatFileSize(image.file.size)}
+                                        </p>
+
+                                    </div>
+
+
+                                    <span
+                                        class="
+                                            text-xs
+                                            bg-slate-100
+                                            text-slate-600
+                                            px-2
+                                            py-1
+                                            rounded-full
+                                            shrink-0
+                                        "
+                                    >
+                                        #${index + 1}
+                                    </span>
+
+                                </div>
+
+
+                                <!-- TAMANHO -->
+
+                                <div
+                                    class="
+                                        grid
+                                        grid-cols-2
+                                        md:grid-cols-4
+                                        gap-3
+                                        mt-4
+                                    "
+                                >
+
+                                    <!-- LARGURA -->
+
+                                    <label
+                                        class="text-sm"
+                                    >
+
+                                        <span
+                                            class="
+                                                block
+                                                text-xs
+                                                text-slate-500
+                                                mb-1
+                                            "
+                                        >
+                                            Largura
+                                        </span>
+
+
+                                        <input
+                                            data-action="width"
+                                            data-id="${image.id}"
+                                            type="number"
+                                            min="0.1"
+                                            step="0.1"
+                                            value="${image.width}"
+                                            class="
+                                                w-full
+                                                px-3
+                                                py-2
+                                                rounded-lg
+                                                border
+                                                border-slate-300
+                                                focus:border-blue-500
+                                                focus:ring-2
+                                                focus:ring-blue-100
+                                                outline-none
+                                            "
+                                        >
+
+                                    </label>
+
+
+                                    <!-- ALTURA -->
+
+                                    <label
+                                        class="text-sm"
+                                    >
+
+                                        <span
+                                            class="
+                                                block
+                                                text-xs
+                                                text-slate-500
+                                                mb-1
+                                            "
+                                        >
+                                            Altura
+                                        </span>
+
+
+                                        <input
+                                            data-action="height"
+                                            data-id="${image.id}"
+                                            type="number"
+                                            min="0.1"
+                                            step="0.1"
+                                            value="${image.height}"
+                                            class="
+                                                w-full
+                                                px-3
+                                                py-2
+                                                rounded-lg
+                                                border
+                                                border-slate-300
+                                                focus:border-blue-500
+                                                focus:ring-2
+                                                focus:ring-blue-100
+                                                outline-none
+                                            "
+                                        >
+
+                                    </label>
+
+
+                                    <!-- UNIDADE -->
+
+                                    <label
+                                        class="text-sm"
+                                    >
+
+                                        <span
+                                            class="
+                                                block
+                                                text-xs
+                                                text-slate-500
+                                                mb-1
+                                            "
+                                        >
+                                            Unidade
+                                        </span>
+
+
+                                        <select
+                                            data-action="unit"
+                                            data-id="${image.id}"
+                                            class="
+                                                w-full
+                                                px-3
+                                                py-2
+                                                rounded-lg
+                                                border
+                                                border-slate-300
+                                                bg-white
+                                            "
+                                        >
+
+                                            <option
+                                                value="cm"
+                                                ${image.unit === "cm" ? "selected" : ""}
+                                            >
+                                                cm
+                                            </option>
+
+
+                                            <option
+                                                value="mm"
+                                                ${image.unit === "mm" ? "selected" : ""}
+                                            >
+                                                mm
+                                            </option>
+
+
+                                            <option
+                                                value="px"
+                                                ${image.unit === "px" ? "selected" : ""}
+                                            >
+                                                px
+                                            </option>
+
+                                        </select>
+
+                                    </label>
+
+
+                                    <!-- PROPORÇÃO -->
+
+                                    <label
+                                        class="
+                                            flex
+                                            items-end
+                                            pb-2
+                                            gap-2
+                                            text-sm
+                                        "
+                                    >
+
+                                        <input
+                                            data-action="ratio"
+                                            data-id="${image.id}"
+                                            type="checkbox"
+                                            ${image.lockRatio ? "checked" : ""}
+                                            class="
+                                                w-4
+                                                h-4
+                                                accent-blue-600
+                                            "
+                                        >
+
+                                        <span>
+                                            Manter proporção
+                                        </span>
+
+                                    </label>
+
+                                </div>
+
+
+                                <!-- BORDAS -->
+
+                                <div
+                                    class="
+                                        mt-4
+                                        p-3
+                                        rounded-xl
+                                        bg-slate-50
+                                        border
+                                        border-slate-200
+                                    "
+                                >
+
+                                    <div
+                                        class="
+                                            flex
+                                            flex-wrap
+                                            items-center
+                                            gap-4
+                                        "
+                                    >
+
+                                        <!-- BORDA -->
+
+                                        <label
+                                            class="
+                                                flex
+                                                items-center
+                                                gap-2
+                                                text-sm
+                                            "
+                                        >
+
+                                            <input
+                                                data-action="border"
+                                                data-id="${image.id}"
+                                                type="checkbox"
+                                                ${image.border ? "checked" : ""}
+                                                class="
+                                                    w-4
+                                                    h-4
+                                                    accent-blue-600
+                                                "
+                                            >
+
+                                            <span>
+                                                Borda
+                                            </span>
+
+                                        </label>
+
+
+                                        <!-- ESPESSURA -->
+
+                                        <label
+                                            class="text-sm"
+                                        >
+
+                                            <span
+                                                class="
+                                                    text-slate-500
+                                                    mr-1
+                                                "
+                                            >
+                                                Espessura
+                                            </span>
+
+
+                                            <select
+                                                data-action="borderWidth"
+                                                data-id="${image.id}"
+                                                class="
+                                                    px-2
+                                                    py-1
+                                                    rounded-md
+                                                    border
+                                                    border-slate-300
+                                                    bg-white
+                                                "
+                                            >
+
+                                                <option
+                                                    value="1px"
+                                                    ${image.borderWidth === "1px" ? "selected" : ""}
+                                                >
+                                                    Fina
+                                                </option>
+
+
+                                                <option
+                                                    value="2px"
+                                                    ${image.borderWidth === "2px" ? "selected" : ""}
+                                                >
+                                                    Média
+                                                </option>
+
+
+                                                <option
+                                                    value="4px"
+                                                    ${image.borderWidth === "4px" ? "selected" : ""}
+                                                >
+                                                    Grossa
+                                                </option>
+
+                                            </select>
+
+                                        </label>
+
+
+                                        <!-- COR -->
+
+                                        <label
+                                            class="
+                                                flex
+                                                items-center
+                                                gap-2
+                                                text-sm
+                                            "
+                                        >
+
+                                            <span
+                                                class="text-slate-500"
+                                            >
+                                                Cor
+                                            </span>
+
+
+                                            <input
+                                                data-action="borderColor"
+                                                data-id="${image.id}"
+                                                type="color"
+                                                value="${image.borderColor}"
+                                                class="
+                                                    w-9
+                                                    h-8
+                                                    rounded
+                                                    border
+                                                    border-slate-300
+                                                    cursor-pointer
+                                                "
+                                            >
+
+                                        </label>
+
+                                    </div>
+
+                                </div>
+
+
+                                <!-- AÇÕES -->
+
+                                <div
+                                    class="
+                                        flex
+                                        flex-wrap
+                                        items-center
+                                        gap-2
+                                        mt-4
+                                    "
+                                >
+
+                                    <button
+                                        data-action="up"
+                                        data-id="${image.id}"
+                                        type="button"
+                                        class="
+                                            px-3
+                                            py-2
+                                            rounded-lg
+                                            bg-slate-100
+                                            hover:bg-slate-200
+                                            text-sm
+                                        "
+                                    >
+                                        ↑ Subir
+                                    </button>
+
+
+                                    <button
+                                        data-action="down"
+                                        data-id="${image.id}"
+                                        type="button"
+                                        class="
+                                            px-3
+                                            py-2
+                                            rounded-lg
+                                            bg-slate-100
+                                            hover:bg-slate-200
+                                            text-sm
+                                        "
+                                    >
+                                        ↓ Descer
+                                    </button>
+
+
+                                    <button
+                                        data-action="duplicate"
+                                        data-id="${image.id}"
+                                        type="button"
+                                        class="
+                                            px-3
+                                            py-2
+                                            rounded-lg
+                                            bg-blue-50
+                                            text-blue-600
+                                            hover:bg-blue-100
+                                            text-sm
+                                        "
+                                    >
+                                        ⧉ Duplicar
+                                    </button>
+
+
+                                    <button
+                                        data-action="remove"
+                                        data-id="${image.id}"
+                                        type="button"
+                                        class="
+                                            px-3
+                                            py-2
+                                            rounded-lg
+                                            bg-red-50
+                                            text-red-600
+                                            hover:bg-red-100
+                                            text-sm
+                                        "
+                                    >
+                                        Excluir
+                                    </button>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    `;
+
+
+                    imageList.appendChild(card);
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           RENDER DA PRÉ-VISUALIZAÇÃO
+        ====================================================== */
+
+        function renderPreview() {
+
+            previewArea.innerHTML = "";
+
+
+            if (
+                state.images.length === 0
+            ) {
+
+                previewArea.innerHTML = `
+
+                    <div
+                        class="
+                            w-full
+                            max-w-2xl
+                            mx-auto
+                            bg-white
+                            rounded-2xl
+                            border
+                            border-slate-200
+                            p-10
+                            text-center
+                            text-slate-400
+                        "
+                    >
+                        Nenhuma imagem adicionada.
+                    </div>
+
+                `;
+
+                return;
+
+            }
+
+
+            /*
+             * Posição lógica dentro da folha.
+             *
+             * currentX:
+             * posição horizontal.
+             *
+             * currentY:
+             * posição vertical.
+             *
+             * currentRowHeight:
+             * maior altura da linha atual.
+             */
+
+            let currentSheet = null;
+
+            let currentContent = null;
+
+            let currentX = 0;
+
+            let currentY = 0;
+
+            let currentRowHeight = 0;
+
+
+            /* =================================================
+               CRIAR PÁGINA
+            ================================================== */
+
+            function createSheet() {
+
+                const sheet =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                sheet.className =
+                    "print-sheet";
+
+
+                const content =
+                    document.createElement(
+                        "div"
+                    );
+
+
+                content.className =
+                    "sheet-content";
+
+
+                sheet.appendChild(
+                    content
+                );
+
+
+                previewArea.appendChild(
+                    sheet
+                );
+
+
+                currentSheet =
+                    sheet;
+
+                currentContent =
+                    content;
+
+
+                currentX = 0;
+
+                currentY = 0;
+
+                currentRowHeight = 0;
+
+            }
+
+
+            createSheet();
+
+
+            /* =================================================
+               ADICIONAR CADA IMAGEM
+            ================================================== */
+
+            state.images.forEach(
+                image => {
+
+                    const widthCm =
+                        toCm(
+                            image.width,
+                            image.unit
+                        );
+
+
+                    const heightCm =
+                        toCm(
+                            image.height,
+                            image.unit
+                        );
+
+
+                    /*
+                     * Espaçamento necessário antes da imagem.
+                     *
+                     * Não existe espaço antes da primeira
+                     * imagem de uma linha.
+                     */
+
+                    const gapBefore =
+                        currentX > 0
+                            ? IMAGE_GAP
+                            : 0;
+
+
+                    /*
+                     * Verifica se cabe na linha atual.
+                     */
+
+                    if (
+                        currentX > 0 &&
+                        currentX +
+                        gapBefore +
+                        widthCm >
+                        PAGE_WIDTH
+                    ) {
+
+                        /*
+                         * Próxima linha.
+                         */
+
+                        currentX = 0;
+
+                        currentY +=
+                            currentRowHeight +
+                            IMAGE_GAP;
+
+                        currentRowHeight = 0;
+
+                    }
+
+
+                    /*
+                     * Depois da eventual mudança de linha,
+                     * verifica a altura.
+                     */
+
+                    if (
+                        currentY > 0 &&
+                        currentY +
+                        heightCm >
+                        PAGE_HEIGHT
+                    ) {
+
+                        /*
+                         * Nova página.
+                         */
+
+                        createSheet();
+
+                    }
+
+
+                    /*
+                     * Cria o item.
+                     */
+
+                    const item =
+                        document.createElement(
+                            "div"
+                        );
+
+
+                    item.className =
+                        "print-item";
+
+
+                    /*
+                     * O tamanho configurado pelo usuário
+                     * é mantido.
+                     */
+
+                    item.style.width =
+                        cssSize(
+                            image.width,
+                            image.unit
+                        );
+
+
+                    item.style.height =
+                        cssSize(
+                            image.height,
+                            image.unit
+                        );
+
+
+                    item.style.boxSizing =
+                        "border-box";
+
+
+                    /*
+                     * Espaçamento horizontal.
+                     */
+
+                    if (
+                        currentX > 0
+                    ) {
+
+                        item.style.marginLeft =
+                            `${IMAGE_GAP}cm`;
+
+                    }
+
+
+                    /*
+                     * Borda.
+                     */
+
+                    if (
+                        image.border
+                    ) {
+
+                        item.style.border =
+                            `${image.borderWidth} solid ${image.borderColor}`;
+
+                    } else {
+
+                        item.style.border =
+                            "none";
+
+                    }
+
+
+                    /*
+                     * Imagem.
+                     */
+
+                    const img =
+                        document.createElement(
+                            "img"
+                        );
+
+
+                    img.src =
+                        image.url;
+
+
+                    img.alt =
+                        image.file.name;
+
+
+                    item.appendChild(
+                        img
+                    );
+
+
+                    /*
+                     * Adiciona à página.
+                     */
+
+                    currentContent.appendChild(
+                        item
+                    );
+
+
+                    /*
+                     * Atualiza a posição lógica.
+                     */
+
+                    currentX +=
+                        widthCm +
+                        gapBefore;
+
+
+                    currentRowHeight =
+                        Math.max(
+                            currentRowHeight,
+                            heightCm
+                        );
+
+                }
+            );
+
+        }
+
+
+        /* =====================================================
+           RENDER GERAL
+        ====================================================== */
+
+        function render() {
+
+            renderImageList();
+
+            renderPreview();
+
+            updateInterfaceState();
+
+        }
+
+
+        /* =====================================================
+           ATUALIZA INTERFACE
+        ====================================================== */
+
+        function updateInterfaceState() {
+
+            const count =
+                state.images.length;
+
+
+            imageCounter.textContent =
+                `${count} ${
+                    count === 1
+                        ? "imagem"
+                        : "imagens"
+                }`;
+
+
+            if (count > 0) {
+
+                clearAllButton.classList.remove(
+                    "hidden"
+                );
+
+                batchControls.classList.remove(
+                    "hidden"
+                );
+
+            } else {
+
+                clearAllButton.classList.add(
+                    "hidden"
+                );
+
+                batchControls.classList.add(
+                    "hidden"
+                );
+
+                batchSizePanel.classList.add(
+                    "hidden"
+                );
+
+            }
+
+        }
+
+
+        /* =====================================================
+           EVENTOS DOS INPUTS
+        ====================================================== */
+
+        imageList.addEventListener(
+            "change",
+            event => {
+
+                const element =
+                    event.target;
+
+
+                const action =
+                    element.dataset.action;
+
+
+                const id =
+                    Number(
+                        element.dataset.id
+                    );
+
+
+                const image =
+                    state.images.find(
+                        item =>
+                            item.id === id
+                    );
+
+
+                if (!image) {
+
+                    return;
+
+                }
+
+
+                /* LARGURA */
+
+                if (
+                    action === "width"
+                ) {
+
+                    const newWidth =
+                        Number(
+                            element.value
+                        );
+
+
+                    image.width =
+                        newWidth;
+
+
+                    if (
+                        image.lockRatio
+                    ) {
+
+                        image.height =
+                            roundNumber(
+                                calculateHeight(
+                                    image,
+                                    newWidth
+                                )
+                            );
+
+                    }
+
+                }
+
+
+                /* ALTURA */
+
+                if (
+                    action === "height"
+                ) {
+
+                    const newHeight =
+                        Number(
+                            element.value
+                        );
+
+
+                    image.height =
+                        newHeight;
+
+
+                    if (
+                        image.lockRatio
+                    ) {
+
+                        const ratio =
+                            image.naturalWidth /
+                            image.naturalHeight;
+
+
+                        image.width =
+                            roundNumber(
+                                newHeight *
+                                ratio
+                            );
+
+                    }
+
+                }
+
+
+                /* UNIDADE */
+
+                if (
+                    action === "unit"
+                ) {
+
+                    const oldUnit =
+                        image.unit;
+
+
+                    const newUnit =
+                        element.value;
+
+
+                    const widthCm =
+                        toCm(
+                            image.width,
+                            oldUnit
+                        );
+
+
+                    const heightCm =
+                        toCm(
+                            image.height,
+                            oldUnit
+                        );
+
+
+                    image.width =
+                        roundNumber(
+                            fromCm(
+                                widthCm,
+                                newUnit
+                            )
+                        );
+
+
+                    image.height =
+                        roundNumber(
+                            fromCm(
+                                heightCm,
+                                newUnit
+                            )
+                        );
+
+
+                    image.unit =
+                        newUnit;
+
+                }
+
+
+                /* PROPORÇÃO */
+
+                if (
+                    action === "ratio"
+                ) {
+
+                    image.lockRatio =
+                        element.checked;
+
+                }
+
+
+                /* BORDA */
+
+                if (
+                    action === "border"
+                ) {
+
+                    image.border =
+                        element.checked;
+
+                }
+
+
+                /* ESPESSURA */
+
+                if (
+                    action === "borderWidth"
+                ) {
+
+                    image.borderWidth =
+                        element.value;
+
+                }
+
+
+                /* COR */
+
+                if (
+                    action === "borderColor"
+                ) {
+
+                    image.borderColor =
+                        element.value;
+
+                }
+
+
+                render();
+
+            }
+        );
+
+
+        /* =====================================================
+           EVENTOS DOS BOTÕES
+        ====================================================== */
+
+        imageList.addEventListener(
+            "click",
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "button"
+                    );
+
+
+                if (!button) {
+
+                    return;
+
+                }
+
+
+                const action =
+                    button.dataset.action;
+
+
+                const id =
+                    Number(
+                        button.dataset.id
+                    );
+
+
+                if (
+                    action === "up"
+                ) {
+
+                    moveImage(
+                        id,
+                        -1
+                    );
+
+                }
+
+
+                if (
+                    action === "down"
+                ) {
+
+                    moveImage(
+                        id,
+                        1
+                    );
+
+                }
+
+
+                if (
+                    action === "duplicate"
+                ) {
+
+                    duplicateImage(
+                        id
+                    );
+
+                }
+
+
+                if (
+                    action === "remove"
+                ) {
+
+                    removeImage(
+                        id
+                    );
+
+                }
+
+            }
+        );
+
+
+        /* =====================================================
+           LIMPAR TUDO
+        ====================================================== */
+
+        clearAllButton.addEventListener(
+            "click",
+            () => {
+
+                if (
+                    state.images.length === 0
+                ) {
+
+                    return;
+
+                }
+
+
+                const confirmed =
+                    confirm(
+                        "Deseja remover todas as imagens?"
+                    );
+
+
+                if (!confirmed) {
+
+                    return;
+
+                }
+
+
+                /*
+                 * Libera todos os ObjectURLs.
+                 */
+
+                const uniqueUrls =
+                    new Set(
+                        state.images.map(
+                            image =>
+                                image.url
+                        )
+                    );
+
+
+                uniqueUrls.forEach(
+                    url => {
+
+                        URL.revokeObjectURL(
+                            url
+                        );
+
+                    }
+                );
+
+
+                state.images = [];
+
+
+                render();
+
+            }
+        );
+
+
+        /* =====================================================
+           MOSTRAR TAMANHO EM LOTE
+        ====================================================== */
+
+        showBatchButton.addEventListener(
+            "click",
+            () => {
+
+                batchSizePanel.classList.toggle(
+                    "hidden"
+                );
+
+            }
+        );
+
+
+        /* =====================================================
+           APLICAR TAMANHO EM LOTE
+        ====================================================== */
+
+        applyBatchButton.addEventListener(
+            "click",
+            () => {
+
+                const width =
+                    Number(
+                        document.getElementById(
+                            "batchWidth"
+                        ).value
+                    );
+
+
+                const height =
+                    Number(
+                        document.getElementById(
+                            "batchHeight"
+                        ).value
+                    );
+
+
+                const unit =
+                    document.getElementById(
+                        "batchUnit"
+                    ).value;
+
+
+                if (
+                    width <= 0 ||
+                    height <= 0
+                ) {
+
+                    return;
+
+                }
+
+
+                state.images.forEach(
+                    image => {
+
+                        image.width =
+                            width;
+
+                        image.height =
+                            height;
+
+                        image.unit =
+                            unit;
+
+                    }
+                );
+
+
+                render();
+
+            }
+        );
+
+
+        /* =====================================================
+           REMOVER TODAS AS BORDAS
+        ====================================================== */
+
+        removeBordersButton.addEventListener(
+            "click",
+            () => {
+
+                state.images.forEach(
+                    image => {
+
+                        image.border =
+                            false;
+
+                    }
+                );
+
+
+                render();
+
+            }
+        );
+
+
+        /* =====================================================
+           IMPRESSÃO
+        ====================================================== */
+
+        printButton.addEventListener(
+            "click",
+            () => {
+
+                if (
+                    state.images.length === 0
+                ) {
+
+                    alert(
+                        "Adicione pelo menos uma imagem antes de imprimir."
+                    );
+
+                    return;
+
+                }
+
+
+                /*
+                 * Abre a impressão nativa do navegador.
+                 *
+                 * No Chrome/Edge:
+                 *
+                 * Destino:
+                 * Salvar como PDF
+                 *
+                 * Papel:
+                 * A4
+                 *
+                 * Escala:
+                 * 100%
+                 */
+
+                window.print();
+
+            }
+        );
+
+
+        /* =====================================================
+           INICIALIZAÇÃO
+        ====================================================== */
+
+        render();
+
+    </script>
+
+</body>
+
+</html>

@@ -8,7 +8,7 @@
   <title>Mapas de Território</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=6.0" />
+  <link rel="stylesheet" href="styles.css?v=6.2" />
 </head>
 <body>
   <div class="app" id="app">
@@ -68,12 +68,21 @@
         <div class="start" id="startScreen" hidden>
           <div class="start-card">
             <h2>Comece seu mapa de território</h2>
-            <p>Escolha a base do mapa. Depois desenhe ruas, áreas e referências por cima.</p>
+            <p>O jeito mais rápido é marcar as quadras no mapa. Se preferir, desenhe por cima de um print ou em branco.</p>
+            <button class="start-hero" data-start="territory">
+              <span data-icon="wand"></span>
+              <span class="grow">
+                <strong>Criar pelo mapa</strong>
+                <small>Busque o endereço e toque nas quadras do território. Ruas com nome, quadras numeradas e referências são montadas sozinhas.</small>
+              </span>
+              <em>Recomendado</em>
+            </button>
+            <p class="start-or">ou comece do jeito manual</p>
             <div class="start-grid">
               <button class="start-option" data-start="osm">
                 <span data-icon="globe"></span>
-                <strong>Buscar no mapa</strong>
-                <small>Procure o endereço e capture a região (OpenStreetMap)</small>
+                <strong>Imagem do mapa</strong>
+                <small>Capture uma região do OpenStreetMap e desenhe por cima</small>
               </button>
               <button class="start-option" data-start="image">
                 <span data-icon="image"></span>
@@ -122,13 +131,16 @@
   <input type="file" id="jsonFile" accept="application/json,.json" hidden />
   <div class="toasts" id="toasts" aria-live="polite"></div>
 
-  <script src="js/util.js?v=6.0"></script>
-  <script src="js/model.js?v=6.0"></script>
-  <script src="js/render.js?v=6.0"></script>
-  <script src="js/storage.js?v=6.0"></script>
-  <script src="js/ui.js?v=6.0"></script>
-  <script src="js/osm.js?v=6.0"></script>
-  <script src="js/editor.js?v=6.0"></script>
-  <script src="js/app.js?v=6.0"></script>
+  <script src="js/util.js?v=6.2"></script>
+  <script src="js/model.js?v=6.2"></script>
+  <script src="js/render.js?v=6.2"></script>
+  <script src="js/storage.js?v=6.2"></script>
+  <script src="js/ui.js?v=6.2"></script>
+  <script src="js/osm.js?v=6.2"></script>
+  <script src="js/mvt.js?v=6.2"></script>
+  <script src="js/vectormap.js?v=6.2"></script>
+  <script src="js/territory.js?v=6.2"></script>
+  <script src="js/editor.js?v=6.2"></script>
+  <script src="js/app.js?v=6.2"></script>
 </body>
 </html>

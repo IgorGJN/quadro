@@ -109,13 +109,52 @@
     return { dataUrl, width: W, height: H, frame, attribution: src.attribution };
   }
 
+  // Busca de endereço (Nominatim) e "minha localização", usadas pelas duas janelas de mapa.
+  function searchHtml() {
+    return '<form class="osm-search"><input class="input" name="q" placeholder="Buscar endereço, bairro ou cidade…" autocomplete="off" /><button class="btn primary" type="submit">' + App.ui.icon('search') + '<span class="hide-xs">Buscar</span></button>' +
+      '<button class="btn" type="button" data-locate title="Usar minha localização">' + App.ui.icon('target') + '</button></form>' +
+      '<div class="osm-results" hidden></div>';
+  }
+
+  function bindSearch(root, map, maxZoom) {
+    const form = root.querySelector('.osm-search');
+    const results = root.querySelector('.osm-results');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const q = form.q.value.trim();
+      if (!q) return;
+      results.hidden = false;
+      results.innerHTML = '<button disabled>Buscando…</button>';
+      try {
+        const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=pt-BR&q=' + encodeURIComponent(q));
+        const list = await res.json();
+        if (!list.length) { results.innerHTML = '<button disabled>Nenhum resultado. Tente incluir a cidade.</button>'; return; }
+        results.innerHTML = list.map((r, i) => '<button type="button" data-i="' + i + '">' + U.escapeHtml(r.display_name) + '</button>').join('');
+        results.querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => {
+          const r = list[+b.dataset.i];
+          const bb = r.boundingbox.map(Number);
+          map.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: maxZoom || 17 });
+          results.hidden = true;
+        }));
+      } catch (err) {
+        results.innerHTML = '<button disabled>Falha na busca. Verifique a conexão.</button>';
+      }
+    });
+    root.querySelector('[data-locate]').addEventListener('click', () => {
+      if (!navigator.geolocation) return App.ui.toast('Localização indisponível neste navegador.');
+      navigator.geolocation.getCurrentPosition(
+        (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
+        () => App.ui.toast('Não foi possível obter sua localização.'),
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    });
+  }
+
   async function open() {
     const prefs = App.storage.getPrefs();
     const body = document.createElement('div');
     body.innerHTML =
-      '<form class="osm-search"><input class="input" name="q" placeholder="Buscar endereço, bairro ou cidade…" autocomplete="off" /><button class="btn primary" type="submit">' + App.ui.icon('search') + '<span class="hide-xs">Buscar</span></button>' +
-      '<button class="btn" type="button" data-locate title="Usar minha localização">' + App.ui.icon('target') + '</button></form>' +
-      '<div class="osm-results" hidden></div>' +
+      searchHtml() +
       '<div class="osm-map-wrap"><div class="osm-map"></div><div class="osm-frame"><span>Cartão</span></div></div>' +
       '<div class="osm-options"><label>Detalhe <select class="select" name="quality" style="width:auto;margin-left:6px"><option value="high">Alto (recomendado)</option><option value="normal">Normal</option></select></label>' +
       '<span style="color:var(--muted)">Posicione a região dentro do retângulo. Uma margem em volta também é capturada.</span></div>' +
@@ -133,7 +172,6 @@
 
     const mapEl = body.querySelector('.osm-map');
     const frameEl = body.querySelector('.osm-frame');
-    const results = body.querySelector('.osm-results');
     const progress = body.querySelector('.osm-progress');
 
     let L;
@@ -165,37 +203,7 @@
     ro.observe(mapEl);
     m.dlg.addEventListener('close', () => { ro.disconnect(); map.remove(); });
 
-    const form = body.querySelector('form');
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const q = form.q.value.trim();
-      if (!q) return;
-      results.hidden = false;
-      results.innerHTML = '<button disabled>Buscando…</button>';
-      try {
-        const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=pt-BR&q=' + encodeURIComponent(q));
-        const list = await res.json();
-        if (!list.length) { results.innerHTML = '<button disabled>Nenhum resultado. Tente incluir a cidade.</button>'; return; }
-        results.innerHTML = list.map((r, i) => '<button type="button" data-i="' + i + '">' + U.escapeHtml(r.display_name) + '</button>').join('');
-        results.querySelectorAll('[data-i]').forEach((b) => b.addEventListener('click', () => {
-          const r = list[+b.dataset.i];
-          const bb = r.boundingbox.map(Number);
-          map.fitBounds([[bb[0], bb[2]], [bb[1], bb[3]]], { maxZoom: 17 });
-          results.hidden = true;
-        }));
-      } catch (err) {
-        results.innerHTML = '<button disabled>Falha na busca. Verifique a conexão.</button>';
-      }
-    });
-
-    body.querySelector('[data-locate]').addEventListener('click', () => {
-      if (!navigator.geolocation) return App.ui.toast('Localização indisponível neste navegador.');
-      navigator.geolocation.getCurrentPosition(
-        (pos) => map.setView([pos.coords.latitude, pos.coords.longitude], 17),
-        () => App.ui.toast('Não foi possível obter sua localização.'),
-        { enableHighAccuracy: true, timeout: 10000 }
-      );
-    });
+    bindSearch(body, map);
 
     use.addEventListener('click', async () => {
       if (map.getZoom() < 12) { App.ui.toast('Aproxime mais o mapa: escolha a região das ruas do território.'); return; }
@@ -216,5 +224,5 @@
     });
   }
 
-  App.osm = { open };
+  App.osm = { open, loadLeaflet, searchHtml, bindSearch, SOURCES };
 })();

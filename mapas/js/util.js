@@ -103,35 +103,42 @@
     return { x: x1, y: y1, w: x2 - x1, h: y2 - y1 };
   }
 
-  // Ponto bom para o rótulo de um polígono (inclusive côncavo):
-  // centróide se estiver dentro; senão, o meio do maior trecho horizontal interno.
+  // Ponto bom para o rótulo de um polígono (inclusive côncavo): o ponto
+  // interno mais afastado das bordas (busca em grade com refinamento). O
+  // centróide é mantido quando já está bem no meio, para não "pular".
   function polygonLabelPoint(pts) {
     if (pts.length < 3) return pts[0] || { x: 0, y: 0 };
+    const edgeDist = (p) => {
+      let d = Infinity;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) d = Math.min(d, projectOnSegment(p, pts[j], pts[i]).d);
+      return d;
+    };
+    const score = (p) => (pointInPolygon(p, pts) ? edgeDist(p) : -1);
     let a = 0, cx = 0, cy = 0;
     for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
       const f = pts[j].x * pts[i].y - pts[i].x * pts[j].y;
       a += f; cx += (pts[j].x + pts[i].x) * f; cy += (pts[j].y + pts[i].y) * f;
     }
-    let c = a ? { x: cx / (3 * a), y: cy / (3 * a) } : bounds(pts);
-    if (!a) c = { x: c.x + c.w / 2, y: c.y + c.h / 2 };
-    if (pointInPolygon(c, pts)) return c;
-
     const b = bounds(pts);
-    let best = null, bestLen = -1;
-    for (let k = 1; k < 24; k++) {
-      const y = b.y + (b.h * k) / 24;
-      const xs = [];
-      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-        const p1 = pts[i], p2 = pts[j];
-        if ((p1.y > y) !== (p2.y > y)) xs.push(p1.x + ((y - p1.y) * (p2.x - p1.x)) / (p2.y - p1.y));
-      }
-      xs.sort((m, n) => m - n);
-      for (let i = 0; i + 1 < xs.length; i += 2) {
-        const len = xs[i + 1] - xs[i];
-        if (len > bestLen) { bestLen = len; best = { x: (xs[i] + xs[i + 1]) / 2, y }; }
+    const c = a ? { x: cx / (3 * a), y: cy / (3 * a) } : { x: b.x + b.w / 2, y: b.y + b.h / 2 };
+    const cs = score(c);
+    const N = 12;
+    let best = c, bestS = cs;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const p = { x: b.x + (b.w * (i + 0.5)) / N, y: b.y + (b.h * (j + 0.5)) / N };
+      const s = score(p);
+      if (s > bestS) { bestS = s; best = p; }
+    }
+    let sx = b.w / N / 2, sy = b.h / N / 2;
+    for (let k = 0; k < 4; k++, sx /= 2, sy /= 2) {
+      const base = best;
+      for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        const p = { x: base.x + i * sx, y: base.y + j * sy };
+        const s = score(p);
+        if (s > bestS) { bestS = s; best = p; }
       }
     }
-    return best || c;
+    return cs >= bestS * 0.75 ? c : best;
   }
 
   function rotate(p, angleDeg, origin) {

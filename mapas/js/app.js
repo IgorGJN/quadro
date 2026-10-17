@@ -292,6 +292,17 @@
           else { S.dropLastCheckpoint(); UI.toast('Nenhum cruzamento novo encontrado.'); }
           break;
         }
+        case 'styleSame':
+        case 'styleAll': {
+          const keys = ['color', 'width', 'casing', 'casingColor', 'labelSize', 'labelColor', 'dashed', 'smooth', 'rounded'];
+          const targets = S.doc.objects.filter((r) => r.type === 'road' && r.id !== o.id && (act === 'styleAll' || r.color === o.color));
+          const n = S.updateMany(targets, (r) => keys.forEach((k) => { r[k] = o[k]; }));
+          if (n) UI.toast(act === 'styleAll' ? 'Estilo copiado para todas as ruas.' : 'Estilo copiado para as ruas desta cor.', { type: 'ok', action: { label: 'Desfazer', fn: () => S.undo() } });
+          break;
+        }
+        case 'numberTouch':
+          E.startNumbering();
+          break;
         case 'frameTo': {
           const b = R.objectBounds(o);
           const r = M.frameRatio();
@@ -304,6 +315,33 @@
           UI.toast('Cartão enquadrado.', { type: 'ok' });
           break;
         }
+      }
+    },
+
+    // − / + em todas as ruas ou quadras: multiplica, mantendo as proporções.
+    groupStep(target, key, dir) {
+      const objs = target === 'roads' ? S.doc.objects.filter((o) => o.type === 'road') : S.doc.objects.filter(M.isBlock);
+      const f = dir > 0 ? 1.15 : 1 / 1.15;
+      const k = S.sizeFactor();
+      const min = { width: 1, casing: 0, labelSize: 4 }[key] * k;
+      S.updateMany(objs, (o) => {
+        let v = (o[key] || 0) * f;
+        if (!o[key] && dir > 0) v = (key === 'casing' ? 1.5 : 4) * k; // contorno zerado volta a aparecer
+        o[key] = Math.round(Math.max(min, v) * 10) / 10;
+        if (key === 'labelSize' && o.type === 'road' && o.name) o.showLabel = true;
+      }, 'group:' + target + ':' + key);
+    },
+
+    groupColor(target, key, value) {
+      const objs = target === 'roads' ? S.doc.objects.filter((o) => o.type === 'road') : S.doc.objects.filter(M.isBlock);
+      S.updateMany(objs, (o) => { o[key] = value; }, 'gcolor:' + target + ':' + key);
+    },
+
+    blocksAction(a) {
+      if (a === 'touch') { E.startNumbering(); return; }
+      if (a === 'seq') {
+        const n = S.renumberBlocks();
+        UI.toast(n ? 'Quadras numeradas de 1 a ' + n + '.' : 'A numeração já está em sequência.', n ? { type: 'ok', action: { label: 'Desfazer', fn: () => S.undo() } } : undefined);
       }
     },
 
@@ -352,6 +390,7 @@
       if (a === 'frameFit') { S.checkpoint(); M.fitFrame(d); S.changed(); E.fitFrame(); return; }
       if (a === 'replaceImage') { $('imageFile').click(); return; }
       if (a === 'osm') { App.osm.open(); return; }
+      if (a === 'territory') { App.territory.open(); return; }
       if (a === 'removeBase') {
         const ok = await UI.confirm({ title: 'Remover o mapa base?', message: 'Os itens desenhados continuam. Você pode desfazer.', ok: 'Remover', danger: true });
         if (!ok) return;
@@ -448,6 +487,21 @@
       await ST.exportJson(doc);
     },
 
+    // Abre um cartão montado pelo mapa como um novo mapa (o atual fica salvo na galeria).
+    async openGenerated(doc, canvas) {
+      await actions.saveNow();
+      if (canvas) {
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        const id = U.uid('img');
+        await App.images.add(id, dataUrl);
+        try { await ST.putImage(id, dataUrl); } catch (e) { console.warn(e); }
+        doc.base.imageId = id;
+      }
+      await loadDoc(M.normalize(doc));
+      await saveNow();
+    },
+
+    openTerritory: () => App.territory.open(),
     pickJson: () => $('jsonFile').click(),
     setBaseImage
   };
@@ -499,6 +553,7 @@
     document.querySelectorAll('[data-start]').forEach((b) => b.addEventListener('click', () => {
       const a = b.dataset.start;
       if (a === 'osm') App.osm.open();
+      else if (a === 'territory') App.territory.open();
       else if (a === 'image') $('imageFile').click();
       else if (a === 'json') $('jsonFile').click();
       else if (a === 'blank') { S.doc._blank = true; updateStart(); E.setTool('road'); }

@@ -54,6 +54,7 @@
     info: '<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6"/><path d="M12 7.5h.01"/>',
     chevron: '<path d="M6 9l6 6 6-6"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 1v4"/><path d="M12 19v4"/><path d="M1 12h4"/><path d="M19 12h4"/>',
+    wand: '<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8L19 13"/><path d="M17.8 6.2L19 5"/><path d="M3 21l9-9"/><path d="M12.2 6.2L11 5"/>',
     alert: '<path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/>'
   };
 
@@ -197,7 +198,8 @@
       { k: 'dashed', t: 'toggle', label: 'Tracejada' },
       { k: 'smooth', t: 'toggle', label: 'Suavizar curvas' },
       { k: 'rounded', t: 'toggle', label: 'Pontas arredondadas' },
-      { k: 'labelSize', t: 'number', label: 'Tamanho do nome', min: 4, max: 60, scale: true, when: (o) => o.name && o.showLabel }
+      { k: 'labelSize', t: 'number', label: 'Tamanho do nome', min: 4, max: 60, scale: true, when: (o) => o.name && o.showLabel },
+      { k: 'labelColor', t: 'color', label: 'Cor do nome', when: (o) => o.name && o.showLabel }
     ],
     area: [
       { k: 'name', t: 'textarea', label: 'Nome ou número do território', ph: 'Ex.: Território 12', rows: 2 },
@@ -328,7 +330,17 @@
 
   function actionsSection(obj, locked) {
     let extra = '';
-    if (obj.type === 'road') extra += '<button class="btn block" data-act="crossOne" style="margin-bottom:8px"' + (locked ? ' disabled' : '') + '>' + icon('cross') + 'Criar junções onde esta rua cruza outras</button>';
+    if (obj.type === 'road') {
+      extra += '<button class="btn block" data-act="crossOne" style="margin-bottom:8px"' + (locked ? ' disabled' : '') + '>' + icon('cross') + 'Criar junções onde esta rua cruza outras</button>';
+      const roads = S.doc.objects.filter((o) => o.type === 'road' && o.id !== obj.id);
+      const same = roads.filter((o) => o.color === obj.color).length;
+      if (roads.length) {
+        extra += '<p class="note" style="margin:4px 0 6px">Copiar o estilo desta rua (cores, largura, contorno e nome):</p><div class="actions" style="grid-template-columns:1fr 1fr;margin-bottom:8px">' +
+          '<button class="btn" data-act="styleSame"' + (same ? '' : ' disabled') + ' title="Ruas com a mesma cor desta">' + icon('copy') + 'Desta cor</button>' +
+          '<button class="btn" data-act="styleAll">' + icon('copy') + 'Todas as ruas</button></div>';
+      }
+    }
+    if (M.isBlock(obj)) extra += '<button class="btn block" data-act="numberTouch" style="margin-bottom:8px">' + icon('cursor') + 'Renumerar quadras tocando</button>';
     if (obj.type === 'focus' || obj.type === 'area') extra += '<button class="btn block" data-act="frameTo" style="margin-bottom:8px">' + icon('crop') + 'Enquadrar o cartão neste ' + (obj.type === 'focus' ? 'foco' : 'território') + '</button>';
     return '<div class="section"><h3>Ações</h3>' + extra + '<div class="actions">' +
       '<button class="btn" data-act="duplicate" title="Ctrl+D">' + icon('copy') + 'Duplicar</button>' +
@@ -469,7 +481,7 @@
 
   function renderSettings() {
     const el = document.getElementById('settings');
-    if (el.contains(document.activeElement) && document.activeElement.type === 'range') return;
+    if (el.contains(document.activeElement) && ['range', 'color'].includes(document.activeElement.type)) return;
     const d = S.doc;
     const b = d.base;
     const preset = M.FRAMES[d.frame.preset] || M.FRAMES.card;
@@ -483,6 +495,7 @@
       '<label class="toggle" style="margin-top:8px"><span>Escurecer fora do cartão</span><input type="checkbox" data-doc="settings.dimOutside"' + (d.settings.dimOutside ? ' checked' : '') + ' /><span class="track"></span></label></div>';
 
     html += '<div class="section"><h3>Mapa base</h3>';
+    if (d.geo) html += '<p class="note">Cartão criado pelo mapa' + (d.geo.angle ? ' (girado ' + Math.round(d.geo.angle) + '°; a seta do Norte mostra a direção)' : '') + '. Ruas, quadras e referências são itens normais: edite à vontade.</p>';
     if (b.imageId) {
       html += '<label class="toggle"><span>Mostrar mapa base</span><input type="checkbox" data-doc="base.visible"' + (b.visible ? ' checked' : '') + ' /><span class="track"></span></label>' +
         '<div class="field"><label for="baseOpacity">Intensidade <output>' + Math.round(b.opacity * 100) + '%</output></label><input type="range" id="baseOpacity" data-doc="base.opacity" min="0.1" max="1" step="0.05" value="' + b.opacity + '" /></div>' +
@@ -495,6 +508,10 @@
     }
     html += '</div>';
 
+    html += groupSections(d);
+
+    html += '<div class="section"><h3>Novo cartão</h3><p class="note">Marque as quadras no mapa e o cartão é montado sozinho, num mapa novo.</p><button class="btn block" data-set="territory">' + icon('wand') + 'Criar pelo mapa</button></div>';
+
     html += '<div class="section"><h3>Desenho</h3>' +
       '<label class="toggle"><span>Encaixar em pontos e ruas próximas<small>Segure Alt para desativar na hora</small></span><input type="checkbox" data-doc="settings.snap"' + (d.settings.snap ? ' checked' : '') + ' /><span class="track"></span></label>' +
       '<label class="toggle"><span>Junções automáticas<small>Ao concluir uma rua, liga os cruzamentos</small></span><input type="checkbox" data-doc="settings.autoCross"' + (d.settings.autoCross ? ' checked' : '') + ' /><span class="track"></span></label>' +
@@ -506,6 +523,37 @@
     el.innerHTML = html;
     bindSettings(el);
     renderVersions();
+  }
+
+  // Ajustes em grupo: todas as ruas e todas as quadras de uma vez.
+  function mostCommon(objs, k) {
+    const count = new Map();
+    objs.forEach((o) => count.set(o[k], (count.get(o[k]) || 0) + 1));
+    let best = null, n = -1;
+    count.forEach((c, v) => { if (c > n) { n = c; best = v; } });
+    return best || '#000000';
+  }
+
+  function groupSections(d) {
+    const step = (label, target, key) => '<div class="step-row"><span>' + label + '</span><button class="icon-btn small" data-step="' + target + ':' + key + ':-1" aria-label="Diminuir ' + label + '">' + icon('minus') + '</button><button class="icon-btn small" data-step="' + target + ':' + key + ':1" aria-label="Aumentar ' + label + '">' + icon('plus') + '</button></div>';
+    const color = (label, target, key, objs) => '<label class="color-cell"><input type="color" data-gcolor="' + target + ':' + key + '" value="' + esc(mostCommon(objs, key)) + '" /><span>' + label + '</span></label>';
+    let html = '';
+    const roads = d.objects.filter((o) => o.type === 'road');
+    if (roads.length) {
+      html += '<div class="section"><h3>Todas as ruas</h3>' +
+        '<p class="note">Muda todas de uma vez. O − e o + mantêm a diferença entre avenidas e ruas; as cores deixam todas iguais.</p>' +
+        step('Largura', 'roads', 'width') + step('Contorno', 'roads', 'casing') + step('Tamanho dos nomes', 'roads', 'labelSize') +
+        '<div class="color-row">' + color('Ruas', 'roads', 'color', roads) + color('Contorno', 'roads', 'casingColor', roads) + color('Nomes', 'roads', 'labelColor', roads) + '</div></div>';
+    }
+    const blocks = d.objects.filter(M.isBlock);
+    if (blocks.length) {
+      html += '<div class="section"><h3>Quadras <span class="count">' + blocks.length + '</span></h3>' +
+        '<div class="actions" style="grid-template-columns:1fr 1fr;margin-bottom:6px"><button class="btn" data-blocks="touch" title="Toque nas quadras na nova ordem">' + icon('cursor') + 'Numerar tocando</button>' +
+        '<button class="btn" data-blocks="seq" title="Ex.: 1, 2, 4, 5 vira 1, 2, 3, 4">' + icon('history') + 'Fechar buracos</button></div>' +
+        step('Tamanho dos números', 'blocks', 'labelSize') +
+        '<div class="color-row">' + color('Quadras', 'blocks', 'fill', blocks) + color('Números', 'blocks', 'labelColor', blocks) + '</div></div>';
+    }
+    return html;
   }
 
   function bindSettings(el) {
@@ -522,6 +570,12 @@
       if (input.type === 'range') input.addEventListener('change', () => S.breakMerge());
     });
     el.querySelectorAll('[data-set]').forEach((b) => b.addEventListener('click', () => A().settingsAction(b.dataset.set)));
+    el.querySelectorAll('[data-step]').forEach((b) => b.addEventListener('click', () => { const [t, k, dir] = b.dataset.step.split(':'); A().groupStep(t, k, +dir); }));
+    el.querySelectorAll('[data-gcolor]').forEach((input) => {
+      input.addEventListener('input', () => { const [t, k] = input.dataset.gcolor.split(':'); A().groupColor(t, k, input.value); });
+      input.addEventListener('change', () => { S.breakMerge(); renderSettings(); });
+    });
+    el.querySelectorAll('[data-blocks]').forEach((b) => b.addEventListener('click', () => A().blocksAction(b.dataset.blocks)));
   }
 
   async function renderVersions() {

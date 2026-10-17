@@ -234,7 +234,18 @@
       if (ho) outline(c, ho, 'rgba(47,95,179,.55)', 1.5);
     }
 
-    if (sel && sel.visible !== false) drawSelection(c, sel, usage);
+    // Numerar tocando: quadras já numeradas em verde, as que faltam tracejadas
+    if (E.tool === 'number' && E.numbering) {
+      doc.objects.filter((o) => M.isBlock(o) && o.visible !== false).forEach((o) => {
+        const done = E.numbering.done.includes(o.id);
+        c.save();
+        if (!done) c.setLineDash([px(6), px(4)]);
+        outline(c, o, done ? JUNCTION : ACCENT, done ? 3.5 : 2);
+        c.restore();
+      });
+    }
+
+    if (sel && sel.visible !== false && E.tool !== 'number') drawSelection(c, sel, usage);
     if (E.draft) drawDraft(c);
 
     if (E.snap && (DRAW_TOOLS.includes(E.tool) || E.mergeTarget)) {
@@ -785,6 +796,7 @@
       case 'area': return tapOrPan(sp, (spU, wpU, eU) => addDraftPoint(wpU, spU, eU && eU.shiftKey));
       case 'focus': return focusGesture(sp, wp);
       case 'frame': return frameDown(sp, wp);
+      case 'number': return tapOrPan(sp, (spU, wpU) => numberTap(wpU));
       case 'text': case 'marker': case 'compass': case 'legend':
         return tapOrPan(sp, (spU, wpU) => placeObject(E.tool, wpU));
       default: return panGesture(sp);
@@ -868,6 +880,7 @@
   function updateCursor(sp) {
     let cur = 'default';
     if (E.spaceDown || E.tool === 'pan') cur = 'grab';
+    else if (E.tool === 'number') cur = 'pointer';
     else if (DRAW_TOOLS.includes(E.tool) || ['text', 'marker', 'compass', 'legend', 'focus'].includes(E.tool)) cur = 'crosshair';
     else if (sp) {
       const hnd = handleAt(sp);
@@ -898,9 +911,74 @@
     zoomAt(sp.x, sp.y, Math.exp(-dy * (e.ctrlKey ? 0.01 : 0.0018)));
   }
 
+  /* ---------- Numerar quadras tocando ---------- */
+
+  function startNumbering() {
+    const blocks = S.doc.objects.filter(M.isBlock);
+    if (!blocks.length) { App.ui.toast('Não há quadras numeradas neste mapa.'); return; }
+    S.select(null);
+    E.numbering = { next: 1, done: [], started: false };
+    setTool('number');
+  }
+
+  function numberTap(wp) {
+    const nb = E.numbering;
+    const hit = R.hitTest(S.doc, wp, px(tolPx()), (o) => o.type === 'area');
+    if (!hit || nb.done.includes(hit.id)) return;
+    if (!nb.started) { S.checkpoint(); nb.started = true; }
+    hit.name = String(nb.next++);
+    if (!hit.role) hit.role = 'block';
+    nb.done.push(hit.id);
+    S.changed();
+    if (S.doc.objects.filter(M.isBlock).every((o) => nb.done.includes(o.id))) { finishNumbering(); return; }
+    updateHint();
+  }
+
+  // As quadras não tocadas continuam depois, na ordem em que estavam.
+  function finishNumbering() {
+    const nb = E.numbering;
+    if (nb && nb.started) {
+      let n = nb.next;
+      S.doc.objects.filter((o) => M.isBlock(o) && !nb.done.includes(o.id))
+        .sort((a, b) => M.blockNumber(a) - M.blockNumber(b))
+        .forEach((o) => { o.name = String(n++); });
+      S.breakMerge();
+      S.changed();
+      App.ui.toast('Quadras renumeradas.', { type: 'ok', action: { label: 'Desfazer', fn: () => S.undo() } });
+    }
+    E.numbering = null;
+    setTool('select');
+  }
+
+  function undoNumberTap() {
+    const nb = E.numbering;
+    if (!nb || !nb.done.length) return;
+    // Volta ao estado anterior ao modo e reaplica os toques, menos o último
+    const ids = nb.done.slice(0, -1);
+    S.undo();
+    E.numbering = { next: 1, done: [], started: false };
+    ids.forEach((id) => {
+      const o = S.get(id);
+      if (!o) return;
+      if (!E.numbering.started) { S.checkpoint(); E.numbering.started = true; }
+      o.name = String(E.numbering.next++);
+      if (!o.role) o.role = 'block';
+      E.numbering.done.push(id);
+    });
+    S.changed();
+    updateHint();
+  }
+
+  function cancelNumbering() {
+    if (E.numbering && E.numbering.started) S.undo();
+    E.numbering = null;
+    setTool('select');
+  }
+
   /* ---------- Ferramentas e dicas ---------- */
 
   function setTool(tool) {
+    if (E.tool === 'number' && tool !== 'number' && E.numbering) { finishNumbering(); if (tool === 'select') return; }
     if (E.draft && tool !== E.tool) {
       if (E.draft.pts.length >= M.MIN_POINTS[E.draft.type]) finishDraft(); else cancelDraft();
     }
@@ -953,6 +1031,16 @@
       bar.hidden = false;
       return;
     }
+    if (E.tool === 'number' && E.numbering) {
+      const nb = E.numbering;
+      text.innerHTML = 'Toque nas quadras na nova ordem. Próximo número: <b>' + nb.next + '</b>. As que você não tocar seguem depois, na ordem atual.';
+      btn('Cancelar', cancelNumbering);
+      const u = btn('Desfazer toque', undoNumberTap);
+      u.disabled = !nb.done.length;
+      btn('Concluir', finishNumbering, 'primary');
+      bar.hidden = false;
+      return;
+    }
     if (E.tool === 'frame') {
       text.textContent = HINTS.frame;
       btn('Ajustar ao mapa', () => App.actions.settingsAction('frameFit'));
@@ -998,13 +1086,15 @@
     const sel = S.selected();
     switch (key) {
       case 'Escape':
-        if (E.draft) cancelDraft();
+        if (E.tool === 'number') cancelNumbering();
+        else if (E.draft) cancelDraft();
         else if (E.tool !== 'select') setTool('select');
         else if (S.sel.node) S.select(S.sel.id);
         else S.select(null);
         return;
       case 'Enter':
-        if (E.draft) { e.preventDefault(); finishDraft(); }
+        if (E.tool === 'number') { e.preventDefault(); finishNumbering(); }
+        else if (E.draft) { e.preventDefault(); finishDraft(); }
         return;
       case 'Backspace':
       case 'Delete':
@@ -1065,7 +1155,7 @@
 
   Object.assign(E, {
     init, resize, requestDraw, draw, setTool, fitFrame, zoomToRect, zoomBy, visibleWorld, updateHint, updateZoomLabel,
-    finishDraft, cancelDraft, toWorld
+    finishDraft, cancelDraft, toWorld, startNumbering
   });
   App.editor = E;
 })();

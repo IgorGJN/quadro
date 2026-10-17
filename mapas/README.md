@@ -5,13 +5,28 @@ Editor de cartões de território: escolha a base do mapa, desenhe ruas, áreas 
 ## Como usar
 
 1. Abra `index.html` (ou a página publicada no GitHub Pages).
-2. Escolha a base do mapa:
-   - **Buscar no mapa**: procure o endereço e capture a região do OpenStreetMap (precisa de internet);
+2. Use **Criar pelo mapa**, o jeito mais rápido (veja abaixo). Também é possível começar do jeito manual:
+   - **Imagem do mapa**: procure o endereço e capture a região do OpenStreetMap como imagem de fundo (precisa de internet);
    - **Usar um print**: imagem do Google Maps, foto ou captura de tela. Também dá para **colar com Ctrl+V** ou **arrastar o arquivo** para a tela;
    - **Em branco**: desenhar sem mapa de fundo.
 3. Desenhe com as ferramentas e exporte pelo botão **Exportar**.
 
 O mapa é salvo automaticamente neste navegador. Em **Meus mapas** (ícone de pasta) ficam todos os mapas, com miniatura.
+
+## Criar pelo mapa
+
+1. Busque o endereço (ou use a sua localização) e aproxime o mapa até aparecerem os contornos das quadras.
+2. **Toque nas quadras do território**, na ordem em que quer numerá-las. Tocar numa quadra marcada desmarca. **Contornar** marca de uma vez todas as quadras dentro de uma linha desenhada à mão; onde não há quadras mapeadas, o contorno vira a própria área do território.
+3. Dê um nome, escolha o formato e a orientação (**Norte para cima** ou **Girar para caber melhor**) e toque em **Criar cartão**.
+
+O cartão é montado num mapa novo, com:
+
+- as quadras do território coloridas e numeradas;
+- as ruas desenhadas com os nomes, priorizando as que cercam o território e sem sobrepor números ou outros nomes;
+- referências próximas (igrejas, escolas, saúde, mercados, praças, órgãos públicos), afastadas um pouco quando cobririam um número;
+- prédios, praças, água e trilhos no fundo, e a seta do Norte.
+
+Tudo vira itens normais do editor: dá para renomear, apagar, mover, mudar cores ou desenhar mais. As quadras são calculadas a partir da malha de ruas do OpenStreetMap (via tiles vetoriais da OpenFreeMap, sem chave de acesso). Se uma quadra não aparece, é porque falta alguma rua no mapa; nesse caso, use **Contornar**.
 
 ## Conceitos
 
@@ -34,6 +49,15 @@ O mapa é salvo automaticamente neste navegador. Em **Meus mapas** (ícone de pa
 | Cartão | C | Ajusta a área exportada. |
 
 Outros atalhos: Ctrl+Z / Ctrl+Shift+Z (desfazer/refazer), Delete (excluir item ou ponto), Ctrl+D (duplicar), setas (mover; Shift = 10×), Ctrl+S (salvar versão), 0 (ver o cartão inteiro), ? (lista de atalhos).
+
+## Ajustes em grupo
+
+Na aba **Mapa**:
+
+- **Todas as ruas**: − e + mudam largura, contorno e tamanho dos nomes de todas as ruas de uma vez, mantendo avenidas mais largas que ruas; as cores (ruas, contorno, nomes) deixam todas iguais.
+- **Quadras**: **Numerar tocando** (toque nas quadras na nova ordem; as não tocadas seguem depois) e **Fechar buracos** (1, 2, 4, 5 vira 1, 2, 3, 4), além do tamanho dos números e das cores.
+
+Com uma rua selecionada, **Copiar o estilo desta rua** aplica cores, largura, contorno e nome às ruas da mesma cor ou a todas. Cada ajuste em grupo é desfeito com um único Ctrl+Z.
 
 ## Exportar
 
@@ -66,8 +90,11 @@ mapas/
     storage.js  IndexedDB, versões, backup e migração do formato antigo
     ui.js       ícones, avisos, inspetor, camadas, ajustes e galeria
     osm.js      captura de mapa do OpenStreetMap (carrega o Leaflet sob demanda)
+    mvt.js      leitor de tiles vetoriais (Mapbox Vector Tile), sem dependências
+    vectormap.js  ruas, nomes, quadras (faces da malha de ruas), referências e fundo
+    territory.js  janela "Criar pelo mapa" e montagem do cartão
     editor.js   ferramentas, gestos (mouse, toque, caneta) e teclado
     app.js      inicialização, salvamento automático e exportação
 ```
 
-Não há etapa de build: são scripts clássicos, para que o editor abra até com dois cliques no `index.html`. O mapa do OpenStreetMap usa dados © colaboradores do OpenStreetMap, e a atribuição é incluída automaticamente na imagem exportada.
+Não há etapa de build: são scripts clássicos, para que o editor abra até com dois cliques no `index.html`. Os mapas usam dados © colaboradores do OpenStreetMap (e, no "Criar pelo mapa", tiles da OpenFreeMap/OpenMapTiles). A atribuição é incluída automaticamente na imagem exportada.

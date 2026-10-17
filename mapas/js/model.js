@@ -538,11 +538,35 @@
     return count;
   }
 
-  App.model = { TYPES, GROUPS, DRAW_ORDER, groupOf, ICONS, iconById, FRAMES, DEFAULTS, MIN_POINTS, newDoc, normalize, migrateLegacy, frameRatio, fitFrame };
+  /* ---------- Ajustes em grupo ---------- */
+
+  // Quadra = área criada pelo mapa ou área cujo nome é só um número.
+  const isBlock = (o) => o.type === 'area' && (o.role === 'block' || /^\d+$/.test(String(o.name || '').trim()));
+  const blockNumber = (o) => { const n = parseInt(String(o.name || '').trim(), 10); return isNaN(n) ? Infinity : n; };
+
+  // Aplica uma alteração a vários itens como um único passo de desfazer.
+  // Passos seguidos com a mesma chave (ex.: vários cliques em "+") se juntam.
+  function updateMany(objs, fn, key) {
+    if (!objs.length) return 0;
+    checkpoint(key || null);
+    objs.forEach(fn);
+    changed();
+    return objs.length;
+  }
+
+  // Fecha buracos na numeração (1, 2, 4, 5 → 1, 2, 3, 4), mantendo a ordem.
+  function renumberBlocks() {
+    const list = store.doc.objects.filter(isBlock);
+    const sorted = list.map((o, i) => ({ o, i })).sort((a, b) => blockNumber(a.o) - blockNumber(b.o) || a.i - b.i).map((x) => x.o);
+    if (sorted.every((o, i) => String(o.name).trim() === String(i + 1))) return 0;
+    return updateMany(sorted, (o) => { o.name = String(sorted.indexOf(o) + 1); });
+  }
+
+  App.model = { isBlock, blockNumber, TYPES, GROUPS, DRAW_ORDER, groupOf, ICONS, iconById, FRAMES, DEFAULTS, MIN_POINTS, newDoc, normalize, migrateLegacy, frameRatio, fitFrame };
   App.store = Object.assign(store, {
     on, emit, changed, checkpoint, breakMerge, dropLastCheckpoint, undo, redo, setDoc,
     get, node, points, selected, isPath, nodeUsage, sizeFactor, select, styleFor,
-    newNode, create, update, setDocField, remove, duplicate, reorder, moveBy,
+    newNode, create, update, updateMany, renumberBlocks, setDocField, remove, duplicate, reorder, moveBy,
     cleanupNodes, nearestSegment, insertNode, insertOnNearestSegment, removeVertex, splitRoad, detachNode, mergeNodes, crossRoads,
     canUndo: () => store.past.length > 0,
     canRedo: () => store.future.length > 0

@@ -198,16 +198,19 @@
       .filter((c) => c.nodes.length > 1)
       .map((c) => {
         const st = VM.ROAD[c.cls];
-        const width = Math.round(U.clamp(st.m * kpm, st.m * 0.95, st.m * 4) * 10) / 10;
+        // Padrão salvo pela pessoa para este tipo de rua (aba Mapa)
+        const group = VM.ROAD_GROUPS.find((g) => g.classes.includes(c.cls)).id;
+        const pref = (App.storage.getPrefs().roadDefaults || {})[group] || {};
+        const width = Math.round(VM.roadWidth(c.cls, kpm) * (pref.w || 1) * 10) / 10;
         const touches = c.nodes.some((i) => terrNodes.has(i));
         return {
           rank: st.rank,
           obj: Object.assign({}, M.DEFAULTS.road, {
             id: U.uid('o'), type: 'road', role: 'street', labelRank: touches ? 2 : st.rank >= 3 ? 1 : 0, labelAnchor: touches ? anchor : undefined, visible: true, locked: false,
-            points: c.nodes.map(nid), name: c.name || '', showLabel: !!c.name,
-            color: st.fill, casingColor: st.casing, width,
-            casing: Math.round(U.clamp(width * 0.13, 1.5, 4) * 10) / 10,
-            labelSize: st.label, labelColor: '#27303f', rounded: true
+            roadClass: c.cls, points: c.nodes.map(nid), name: c.name || '', showLabel: !!c.name,
+            color: pref.color || st.fill, casingColor: pref.casingColor || st.casing, width,
+            casing: Math.round(U.clamp(VM.roadWidth(c.cls, kpm) * 0.13, 1.5, 4) * (pref.c || 1) * 10) / 10,
+            labelSize: Math.round(st.label * (pref.l || 1) * 10) / 10, labelColor: pref.labelColor || '#27303f', rounded: true
           })
         };
       })

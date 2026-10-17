@@ -332,58 +332,159 @@
     return runs.sort((m, n) => n.len - m.len);
   }
 
+  // Ponto e direção da rua a uma distância s do início (medida ao longo dela).
+  function alongPath(pts) {
+    const cum = [0];
+    for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + U.dist(pts[i - 1], pts[i]));
+    const total = cum[cum.length - 1];
+    const at = (s) => {
+      s = U.clamp(s, 0, total);
+      let i = 1;
+      while (i < cum.length - 1 && cum[i] < s) i++;
+      const seg = cum[i] - cum[i - 1] || 1, t = (s - cum[i - 1]) / seg;
+      return { x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t };
+    };
+    const project = (p) => {
+      let best = { d: Infinity, s: 0 };
+      for (let i = 1; i < pts.length; i++) {
+        const r = U.projectOnSegment(p, pts[i - 1], pts[i]);
+        if (r.d < best.d) best = { d: r.d, s: cum[i - 1] + r.t * (cum[i] - cum[i - 1]) };
+      }
+      return best.s;
+    };
+    return { total, at, project };
+  }
+
+  // Abreviações usuais de mapas, usadas quando o nome inteiro não cabe.
+  const ABBR = [
+    [/^Avenida\b/, 'Av.'], [/^Rua\b/, 'R.'], [/^Alameda\b/, 'Al.'], [/^Travessa\b/, 'Tv.'], [/^Praça\b/, 'Pç.'],
+    [/^Estrada\b/, 'Estr.'], [/^Rodovia\b/, 'Rod.'], [/^Viela\b/, 'Vl.'], [/\bDoutora\b/g, 'Dra.'], [/\bDoutor\b/g, 'Dr.'],
+    [/\bProfessora\b/g, 'Profa.'], [/\bProfessor\b/g, 'Prof.'], [/\bMinistro\b/g, 'Min.'], [/\bCoronel\b/g, 'Cel.'],
+    [/\bGeneral\b/g, 'Gen.'], [/\bComendador\b/g, 'Com.'], [/\bPadre\b/g, 'Pe.'], [/\bEngenheiro\b/g, 'Eng.'],
+    [/\bPresidente\b/g, 'Pres.'], [/\bMarechal\b/g, 'Mal.'], [/\bCapitão\b/g, 'Cap.'], [/\bSenador\b/g, 'Sen.'],
+    [/\bDeputado\b/g, 'Dep.'], [/\bVereador\b/g, 'Ver.'], [/\bJornalista\b/g, 'Jorn.'], [/\bTenente\b/g, 'Ten.'], [/\bSargento\b/g, 'Sgt.']
+  ];
+  const abbreviate = (name) => ABBR.reduce((t, [re, to]) => t.replace(re, to), name);
+  // Mesma rua com grafias diferentes no OSM (acentos, z/s) conta como uma só.
+  const nameKey = (name) => String(name).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/^(rua|avenida|alameda|travessa|av|r|al|tv)\.?\s+/, '').replace(/z/g, 's').replace(/[^a-z0-9]/g, '');
+
+  const readable = (ang) => (ang > Math.PI / 2 ? ang - Math.PI : ang < -Math.PI / 2 ? ang + Math.PI : ang);
+
   // Nome da rua escrito sobre um trecho reto e longo, na direção de leitura,
-  // dentro do cartão e sem cobrir outros nomes e números.
+  // dentro do cartão e sem cobrir outros nomes e números. Se a pessoa arrastou
+  // o nome (labelAt), ele fica ali, acompanhando a rua.
   function roadLabelPlacement(obj, avoid, frame) {
     const pts = S.points(obj);
     if (pts.length < 2) return null;
     measure.font = font(obj.labelSize, true);
-    const tw = measure.measureText(obj.name || '').width;
+    const full = obj.name || '', short = abbreviate(full);
+    const texts = short !== full ? [full, short] : [full];
+    const widths = texts.map((t) => measure.measureText(t).width);
+    let tw = widths[0];
     const th = obj.labelSize * 1.15;
+    const box = (p) => { p.poly = textPoly(p.x, p.y, p.tw + obj.labelSize * 0.5, th, p.angle); return p; };
+
+    if (obj.labelAt) {
+      const path = alongPath(pts);
+      const s0 = path.project(obj.labelAt);
+      const half = Math.min(tw / 2, path.total / 2);
+      const a = path.at(s0 - half), b = path.at(s0 + half), c = path.at(s0);
+      return box({ x: c.x, y: c.y, angle: readable(Math.atan2(b.y - a.y, b.x - a.x)), free: true, manual: true, text: full, tw });
+    }
+
     const runs = straightRuns(pts);
     const inFrame = (poly) => !frame || poly.every((v) => v.x >= frame.x && v.x <= frame.x + frame.w && v.y >= frame.y && v.y <= frame.y + frame.h);
-    let first = null, firstIn = null;
-    for (const pass of [0, 1]) {
+    let first = null, best = null;
+    // Ordem: nome inteiro onde cabe, abreviado onde cabe, e por fim onde der
+    const passes = [];
+    texts.forEach((t, i) => passes.push({ text: t, tw: widths[i], fit: true }));
+    texts.forEach((t, i) => passes.push({ text: t, tw: widths[i], fit: false }));
+    for (let pi = 0; pi < passes.length; pi++) {
+      const pass = passes[pi];
+      tw = pass.tw;
       const cands = [];
       runs.forEach((r) => {
-        if (pass === 0 && r.len < tw * 1.05) return;
-        let ang = Math.atan2(r.b.y - r.a.y, r.b.x - r.a.x);
-        if (ang > Math.PI / 2) ang -= Math.PI;
-        if (ang < -Math.PI / 2) ang += Math.PI;
-        [0.5, 0.32, 0.68, 0.18, 0.82].forEach((t) => cands.push({ x: r.a.x + (r.b.x - r.a.x) * t, y: r.a.y + (r.b.y - r.a.y) * t, angle: ang }));
+        if (pass.fit && r.len < tw * 1.05) return;
+        const ang = readable(Math.atan2(r.b.y - r.a.y, r.b.x - r.a.x));
+        [0.5, 0.32, 0.68, 0.18, 0.82].forEach((t) => cands.push({ x: r.a.x + (r.b.x - r.a.x) * t, y: r.a.y + (r.b.y - r.a.y) * t, angle: ang, text: pass.text, tw }));
       });
       // Ruas em volta do território põem o nome do lado dele.
       if (obj.labelAnchor) cands.sort((m, n) => U.dist(m, obj.labelAnchor) - U.dist(n, obj.labelAnchor));
       for (const p of cands) {
-        p.poly = textPoly(p.x, p.y, tw + obj.labelSize * 0.5, th, p.angle);
+        box(p);
         if (!first) first = p;
         if (!inFrame(p.poly)) continue;
-        if (!firstIn) firstIn = p;
-        if (!(avoid || []).some((q) => polysOverlap(q, p.poly))) { p.free = true; return p; }
+        // O que o nome cobriria (números de quadra pesam mais)
+        const over = overlapCost(p.poly, avoid);
+        if (!over) { p.free = true; return p; }
+        p.cost = over + (pass.fit ? 0 : 0.5) + (p.text === full ? 0 : 0.2);
+        if (!best || p.cost < best.cost) best = p;
       }
     }
-    return firstIn || first;
+    // Ruas do território: antes de aceitar sobreposição, procura ao longo de
+    // toda a rua (também em curvas suaves) um lugar livre.
+    if (obj.labelRank >= 2) {
+      const path = alongPath(pts);
+      for (let i = 0; i < texts.length; i++) {
+        const w = widths[i], half = w / 2;
+        const step = Math.max(w / 5, obj.labelSize);
+        for (let s0 = half; s0 <= path.total - half; s0 += step) {
+          const a = path.at(s0 - half), b = path.at(s0 + half), c = path.at(s0);
+          const p = box({ x: c.x, y: c.y, angle: readable(Math.atan2(b.y - a.y, b.x - a.x)), text: texts[i], tw: w });
+          if (!inFrame(p.poly)) continue;
+          const over = overlapCost(p.poly, avoid);
+          if (!over) { p.free = true; return p; }
+          p.cost = over + 0.5 + (i ? 0.2 : 0);
+          if (!best || p.cost < best.cost) best = p;
+        }
+      }
+    }
+    return best || first;
   }
+
+  function overlapCost(poly, avoid) {
+    if (!avoid || !avoid.length) return 0;
+    const bb = U.bounds(poly);
+    let n = 0;
+    for (const q of avoid) {
+      const qb = q.bb || (q.bb = U.bounds(q));
+      if (qb.x > bb.x + bb.w || bb.x > qb.x + qb.w || qb.y > bb.y + bb.h || bb.y > qb.y + qb.h) continue;
+      if (polysOverlap(q, poly)) n += q.weight || 1;
+    }
+    return n;
+  }
+
+  // Posições dos nomes desenhados no editor (para poder arrastá-los).
+  const labelSpots = new Map();
 
   function drawRoadLabel(c, obj, avoid, frame, placed) {
     if (!obj.name || !obj.showLabel) return;
     // Uma rua dividida em vários trechos não repete o nome lado a lado
-    if (placed && placed.some((q) => q.name === obj.name && U.distToPolyline(q, S.points(obj), false) < q.reach)) return;
+    const key = nameKey(obj.name);
+    if (!obj.labelAt && placed && placed.some((q) => q.key === key && U.distToPolyline(q, S.points(obj), false) < q.reach)) return;
     const p = roadLabelPlacement(obj, avoid, frame);
     if (!p) return;
-    // Ruas criadas pelo mapa: sem espaço livre, o nome é omitido em vez de
-    // ficar por cima de outro (as ruas do território escolhem primeiro).
-    if (!p.free && obj.role === 'street') return;
+    // Ruas criadas pelo mapa: sem espaço livre, o nome é omitido para não
+    // encavalar, exceto nas ruas que cercam o território (sempre têm nome).
+    if (!p.free && obj.role === 'street' && !(obj.labelRank >= 2)) return;
     if (avoid) avoid.push(p.poly);
     if (placed) {
       measure.font = font(obj.labelSize, true);
-      placed.push({ name: obj.name, x: p.x, y: p.y, reach: measure.measureText(obj.name).width * 1.6 });
+      placed.push({ key, x: p.x, y: p.y, reach: measure.measureText(obj.name).width * 1.6 });
     }
+    labelSpots.set(obj.id, p.poly);
     c.save();
     c.translate(p.x, p.y);
     c.rotate(p.angle);
-    haloText(c, obj.name, 0, 0, { font: font(obj.labelSize, true), color: obj.labelColor, halo: '#ffffff', haloWidth: obj.labelSize * 0.3 });
+    haloText(c, p.text || obj.name, 0, 0, { font: font(obj.labelSize, true), color: obj.labelColor, halo: '#ffffff', haloWidth: obj.labelSize * 0.3 });
     c.restore();
+  }
+
+  // Nome de rua sob o ponto (ou null), conforme o último desenho do editor.
+  function roadLabelAt(p) {
+    let hit = null;
+    labelSpots.forEach((poly, id) => { if (U.pointInPolygon(p, poly)) hit = id; });
+    return hit;
   }
 
   function focusShapePath(c, obj) {
@@ -542,8 +643,9 @@
     drawRoads(c, of(['road']));
     // Nomes das ruas desviam dos números/nomes de áreas e dos pontos; as ruas
     // mais largas escolhem lugar primeiro.
-    const avoid = of(['area']).map(areaLabelBox).filter(Boolean).map(rectPoly);
-    vis.filter((ob) => ob.type === 'marker' || ob.type === 'compass' || ob.type === 'legend').forEach((ob) => avoid.push(rectPoly(objectBounds(ob))));
+    const avoid = of(['area']).map(areaLabelBox).filter(Boolean).map((r) => Object.assign(rectPoly(r), { weight: 4 }));
+    labelSpots.clear();
+    vis.filter((ob) => ob.type === 'marker' || ob.type === 'compass' || ob.type === 'legend').forEach((ob) => avoid.push(Object.assign(rectPoly(objectBounds(ob)), { weight: 2 })));
     const placed = [];
     of(['road']).filter((ob) => ob.name && ob.showLabel).sort((m, n) => (n.labelRank || 0) - (m.labelRank || 0) || n.width - m.width).forEach((ob) => drawRoadLabel(c, ob, avoid, f, placed));
     of(['area']).forEach((ob) => drawAreaLabel(c, ob));
@@ -647,7 +749,7 @@
   }
 
   App.render = {
-    FONT, tracePath, haloText, font, roundRect, textBox, legendLayout, objectBounds, roadLabelPlacement,
+    FONT, tracePath, haloText, font, roundRect, textBox, legendLayout, objectBounds, roadLabelPlacement, roadLabelAt,
     drawScene, drawFocus, drawMarkerGlyph, renderFrame, hitTest, hitObject
   };
 })();

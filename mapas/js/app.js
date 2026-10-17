@@ -264,6 +264,13 @@
     }
   }
 
+  function groupObjects(target) {
+    if (target === 'blocks') return S.doc.objects.filter(M.isBlock);
+    const roads = S.doc.objects.filter((o) => o.type === 'road');
+    if (target.startsWith('rg-')) return roads.filter((o) => App.vectormap.roadGroupOf(o) === target.slice(3));
+    return roads;
+  }
+
   const actions = {
     saveNow: () => { scheduleSave.cancel(); return saveNow(); },
 
@@ -306,6 +313,11 @@
           if (n) UI.toast(act === 'styleAll' ? 'Estilo copiado para todas as ruas.' : 'Estilo copiado para as ruas desta cor.', { type: 'ok', action: { label: 'Desfazer', fn: () => S.undo() } });
           break;
         }
+        case 'labelAuto':
+          S.checkpoint();
+          delete o.labelAt;
+          S.changed();
+          break;
         case 'numberTouch':
           E.startNumbering();
           break;
@@ -324,9 +336,10 @@
       }
     },
 
-    // − / + em todas as ruas ou quadras: multiplica, mantendo as proporções.
+    // − / + em todas as ruas, num tipo de rua ou nas quadras: multiplica,
+    // mantendo as proporções.
     groupStep(target, key, dir) {
-      const objs = target === 'roads' ? S.doc.objects.filter((o) => o.type === 'road') : S.doc.objects.filter(M.isBlock);
+      const objs = groupObjects(target);
       const f = dir > 0 ? 1.15 : 1 / 1.15;
       const k = S.sizeFactor();
       const min = { width: 1, casing: 0, labelSize: 4 }[key] * k;
@@ -339,8 +352,39 @@
     },
 
     groupColor(target, key, value) {
-      const objs = target === 'roads' ? S.doc.objects.filter((o) => o.type === 'road') : S.doc.objects.filter(M.isBlock);
+      const objs = groupObjects(target);
       S.updateMany(objs, (o) => { o[key] = value; }, 'gcolor:' + target + ':' + key);
+    },
+
+    // Guarda os estilos de rua deste cartão (por tipo) para os próximos cartões.
+    roadDefaults(a) {
+      const VM = App.vectormap;
+      if (a === 'resetDefault') {
+        ST.setPrefs({ roadDefaults: null });
+        UI.toast('Os próximos cartões voltam a usar o estilo original.', { type: 'ok' });
+        UI.renderSettings();
+        return;
+      }
+      const geo = S.doc.geo;
+      if (!geo || !geo.metersPerUnit) return;
+      const kpm = 1 / geo.metersPerUnit;
+      const median = (arr) => { const v = arr.filter((x) => isFinite(x) && x > 0).sort((m, n) => m - n); return v.length ? v[v.length >> 1] : 1; };
+      const common = (list, k) => { const c = new Map(); list.forEach((o) => c.set(o[k], (c.get(o[k]) || 0) + 1)); return [...c.entries()].sort((m, n) => n[1] - m[1])[0][0]; };
+      const out = {};
+      VM.ROAD_GROUPS.forEach((g) => {
+        if (g.id === 'manual') return;
+        const list = S.doc.objects.filter((o) => o.type === 'road' && VM.roadGroupOf(o) === g.id);
+        if (!list.length) return;
+        out[g.id] = {
+          w: median(list.map((o) => o.width / VM.roadWidth(VM.roadClassOf(o), kpm))),
+          c: median(list.map((o) => o.casing / U.clamp(VM.roadWidth(VM.roadClassOf(o), kpm) * 0.13, 1.5, 4))),
+          l: median(list.map((o) => o.labelSize / VM.ROAD[VM.roadClassOf(o)].label)),
+          color: common(list, 'color'), casingColor: common(list, 'casingColor'), labelColor: common(list, 'labelColor')
+        };
+      });
+      ST.setPrefs({ roadDefaults: Object.assign({}, ST.getPrefs().roadDefaults || {}, out) });
+      UI.toast('Padrão salvo: os próximos cartões criados pelo mapa usam estes estilos de rua.', { type: 'ok', duration: 4500 });
+      UI.renderSettings();
     },
 
     blocksAction(a) {

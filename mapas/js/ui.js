@@ -330,6 +330,11 @@
 
   function actionsSection(obj, locked) {
     let extra = '';
+    if (obj.type === 'road' && obj.name && obj.showLabel) {
+      extra += obj.labelAt
+        ? '<button class="btn block" data-act="labelAuto" style="margin-bottom:8px">' + icon('target') + 'Voltar o nome ao lugar automático</button>'
+        : '<p class="note" style="margin:0 0 8px">Dica: arraste o nome da rua no mapa para mudar a posição dele.</p>';
+    }
     if (obj.type === 'road') {
       extra += '<button class="btn block" data-act="crossOne" style="margin-bottom:8px"' + (locked ? ' disabled' : '') + '>' + icon('cross') + 'Criar junções onde esta rua cruza outras</button>';
       const roads = S.doc.objects.filter((o) => o.type === 'road' && o.id !== obj.id);
@@ -541,10 +546,26 @@
     let html = '';
     const roads = d.objects.filter((o) => o.type === 'road');
     if (roads.length) {
-      html += '<div class="section"><h3>Todas as ruas</h3>' +
-        '<p class="note">Muda todas de uma vez. O − e o + mantêm a diferença entre avenidas e ruas; as cores deixam todas iguais.</p>' +
+      const VM = App.vectormap;
+      html += '<div class="section"><h3>Ruas</h3>' +
+        '<p class="note">Todas de uma vez (o − e o + mantêm a diferença entre avenidas e ruas):</p>' +
         step('Largura', 'roads', 'width') + step('Contorno', 'roads', 'casing') + step('Tamanho dos nomes', 'roads', 'labelSize') +
-        '<div class="color-row">' + color('Ruas', 'roads', 'color', roads) + color('Contorno', 'roads', 'casingColor', roads) + color('Nomes', 'roads', 'labelColor', roads) + '</div></div>';
+        '<div class="color-row">' + color('Ruas', 'roads', 'color', roads) + color('Contorno', 'roads', 'casingColor', roads) + color('Nomes', 'roads', 'labelColor', roads) + '</div>';
+      // Por tipo: avenidas, ruas principais, ruas, vielas e as desenhadas à mão
+      const groups = VM.ROAD_GROUPS.map((g) => ({ g, list: roads.filter((o) => VM.roadGroupOf(o) === g.id) })).filter((x) => x.list.length);
+      if (groups.length > 1 || (groups[0] && groups[0].g.id !== 'manual')) {
+        html += '<h4 class="sub-h">Por tipo</h4>' + groups.map(({ g, list }) =>
+          '<div class="type-block"><div class="type-head">' +
+          '<input type="color" data-gcolor="rg-' + g.id + ':color" value="' + esc(mostCommon(list, 'color')) + '" title="Cor de ' + g.label.toLowerCase() + '" aria-label="Cor de ' + g.label.toLowerCase() + '" />' +
+          '<strong>' + g.label + '</strong></div>' +
+          '<div class="type-steps">' + step('Largura', 'rg-' + g.id, 'width') + step('Nome', 'rg-' + g.id, 'labelSize') + '</div></div>').join('');
+      }
+      if (d.geo && d.geo.source === 'openfreemap') {
+        const has = !!App.storage.getPrefs().roadDefaults;
+        html += '<button class="btn block" style="margin-top:10px" data-roads="saveDefault">' + icon('save') + 'Usar como padrão nos próximos cartões</button>' +
+          (has ? '<button class="link" style="margin-top:6px" data-roads="resetDefault">Voltar ao padrão original</button>' : '');
+      }
+      html += '</div>';
     }
     const blocks = d.objects.filter(M.isBlock);
     if (blocks.length) {
@@ -577,6 +598,8 @@
       input.addEventListener('change', () => { S.breakMerge(); renderSettings(); });
     });
     el.querySelectorAll('[data-blocks]').forEach((b) => b.addEventListener('click', () => A().blocksAction(b.dataset.blocks)));
+    el.querySelectorAll('[data-roads]').forEach((b) => b.addEventListener('click', () => A().roadDefaults(b.dataset.roads)));
+    el.querySelectorAll('[data-roads]').forEach((b) => b.addEventListener('click', () => A().roadDefaults(b.dataset.roads)));
   }
 
   async function renderVersions() {

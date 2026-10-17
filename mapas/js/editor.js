@@ -607,6 +607,26 @@
     };
   }
 
+  // Arrastar o nome de uma rua: ele desliza ao longo da própria rua.
+  function labelGesture(obj, sp0) {
+    let started = false;
+    return {
+      move(sp, wp) {
+        if (!started) {
+          if (Math.hypot(sp.x - sp0.x, sp.y - sp0.y) <= threshold()) return;
+          started = true;
+          S.checkpoint('label:' + obj.id);
+          E.busy = true;
+        }
+        obj.labelAt = { x: wp.x, y: wp.y };
+        S.changed();
+        requestDraw();
+      },
+      up() { if (started) { E.busy = false; S.changed(); } },
+      cursor: 'grabbing'
+    };
+  }
+
   function vertexGesture(obj, nodeId, sp0, insertSeg) {
     let started = false;
     let id = nodeId;
@@ -770,6 +790,13 @@
       if (hnd.kind === 'rotate') return rotateGesture(sel, e.shiftKey);
       if (hnd.kind === 'corner') return cornerGesture(sel, hnd.corner, null, 'focus-resize');
     }
+    // Nome de rua: arrastar muda a posição do nome
+    const labelId = R.roadLabelAt(wp);
+    const labelObj = labelId && S.get(labelId);
+    if (labelObj && labelObj.visible !== false && !labelObj.locked) {
+      S.select(labelObj.id, null);
+      return labelGesture(labelObj, sp);
+    }
     const hit = R.hitTest(S.doc, wp, px(tolPx()));
     if (hit) {
       const wasSelected = hit.id === S.sel.id;
@@ -888,6 +915,8 @@
       else if (E.tool === 'frame') {
         const wp = toWorld(sp.x, sp.y), f = S.doc.frame;
         cur = wp.x >= f.x && wp.x <= f.x + f.w && wp.y >= f.y && wp.y <= f.y + f.h ? 'move' : 'grab';
+      } else if (E.tool === 'select' && R.roadLabelAt(toWorld(sp.x, sp.y))) {
+        cur = 'grab';
       } else if (E.hoverId) {
         const o = S.get(E.hoverId);
         cur = o && !o.locked && (o.id === S.sel.id || (!S.isPath(o) && o.type !== 'focus')) ? 'move' : 'pointer';

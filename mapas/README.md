@@ -65,8 +65,11 @@ Entram no Mapa geral os cartões feitos com **Criar pelo mapa** e os que usam **
 
 Na aba **Mapa**:
 
-- **Todas as ruas**: − e + mudam largura, contorno e tamanho dos nomes de todas as ruas de uma vez, mantendo avenidas mais largas que ruas; as cores (ruas, contorno, nomes) deixam todas iguais.
+- **Ruas**: − e + mudam largura, contorno e tamanho dos nomes de todas as ruas de uma vez, mantendo avenidas mais largas que ruas; as cores (ruas, contorno, nomes) deixam todas iguais.
+- **Por tipo**: avenidas, ruas principais, ruas, vielas e as desenhadas à mão têm cor, largura e tamanho do nome próprios. **Usar como padrão nos próximos cartões** guarda esses estilos para os cartões criados pelo mapa daqui em diante (**Voltar ao padrão original** desfaz).
 - **Quadras**: **Numerar tocando** (toque nas quadras na nova ordem; as não tocadas seguem depois) e **Fechar buracos** (1, 2, 4, 5 vira 1, 2, 3, 4), além do tamanho dos números e das cores.
+
+**Nome da rua fora do lugar?** Arraste o nome no mapa: ele desliza ao longo da própria rua. Com a rua selecionada, **Voltar o nome ao lugar automático** desfaz. Quando falta espaço, o nome é abreviado (Av., R., Al., Dr., Prof.…), e as ruas que cercam o território sempre mostram o nome.
 
 Com uma rua selecionada, **Copiar o estilo desta rua** aplica cores, largura, contorno e nome às ruas da mesma cor ou a todas. Cada ajuste em grupo é desfeito com um único Ctrl+Z.
 

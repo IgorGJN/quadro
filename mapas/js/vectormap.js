@@ -29,6 +29,24 @@
     pedestrian: { rank: 1, m: 6, fill: '#f4f1f8', casing: '#b9b2c6', label: 19 },
     service: { rank: 0, m: 5, fill: '#ffffff', casing: '#c6cbd3', label: 17 }
   };
+  // Tipos de rua para ajustes em grupo (na aba Mapa) e padrões dos cartões.
+  const ROAD_GROUPS = [
+    { id: 'avenue', label: 'Avenidas', classes: ['motorway', 'trunk', 'primary'] },
+    { id: 'collector', label: 'Ruas principais', classes: ['secondary', 'tertiary'] },
+    { id: 'street', label: 'Ruas', classes: ['minor'] },
+    { id: 'small', label: 'Vielas e acessos', classes: ['pedestrian', 'service'] },
+    { id: 'manual', label: 'Desenhadas à mão', classes: [] }
+  ];
+  // Classe de uma rua gerada (cartões antigos: deduzida pelas cores originais).
+  function roadClassOf(o) {
+    if (o.roadClass) return o.roadClass;
+    if (o.role !== 'street') return null;
+    return Object.keys(ROAD).find((k) => ROAD[k].fill === o.color && ROAD[k].casing === o.casingColor) || 'minor';
+  }
+  const roadGroupOf = (o) => { const c = roadClassOf(o); return c ? ROAD_GROUPS.find((g) => g.classes.includes(c)).id : 'manual'; };
+  // Largura "natural" da classe na escala do cartão (kpm = unidades por metro).
+  const roadWidth = (cls, kpm) => Math.round(U.clamp(ROAD[cls].m * kpm, ROAD[cls].m * 0.95, ROAD[cls].m * 4) * 10) / 10;
+
   const BLOCK_CLASSES = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'pedestrian']);
 
   // Pontos de referência úteis num cartão de território.
@@ -329,7 +347,7 @@
       const len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
       const ux = (b.x - a.x) / len, uy = (b.y - a.y) / len;
       const cx = Math.floor(mid.x / CELL), cy = Math.floor(mid.y / CELL);
-      let best = null, bestD = 4;
+      let best = null, bestD = 6;
       for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
         const list = grid.get((cx + dx) * 100003 + (cy + dy));
         if (!list) continue;
@@ -344,6 +362,23 @@
       }
       if (best) e.name = best.name;
     });
+    // Trechos que ficaram sem nome herdam o da continuação (mesma classe,
+    // ponto sem cruzamento), comum quando a rua é cortada em vários trechos.
+    const inc = new Map();
+    edges.forEach((e, i) => [e.u, e.v].forEach((n) => { if (!inc.has(n)) inc.set(n, []); inc.get(n).push(i); }));
+    for (let pass = 0; pass < 8; pass++) {
+      let changed = false;
+      edges.forEach((e, i) => {
+        if (e.name) return;
+        for (const n of [e.u, e.v]) {
+          const list = inc.get(n);
+          if (list.length !== 2) continue;
+          const f = edges[list[0] === i ? list[1] : list[0]];
+          if (f.name && f.cls === e.cls) { e.name = f.name; changed = true; return; }
+        }
+      });
+      if (!changed) break;
+    }
   }
 
   // Faces da malha planar = quadras. Pontas soltas (ruas sem saída) são
@@ -460,5 +495,5 @@
     return canvas;
   }
 
-  App.vectormap = { Z, EXT, WORLD, ATTRIBUTION, ROAD, POI, BLOCK_CLASSES, toG, toLatLng, metersPerUnit, tilesFor, loadTiles, buildGraph, renderBase, clipLine };
+  App.vectormap = { Z, EXT, WORLD, ATTRIBUTION, ROAD, ROAD_GROUPS, roadClassOf, roadGroupOf, roadWidth, POI, BLOCK_CLASSES, toG, toLatLng, metersPerUnit, tilesFor, loadTiles, buildGraph, renderBase, clipLine };
 })();

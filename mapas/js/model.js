@@ -109,6 +109,8 @@
     d.settings = Object.assign(newDoc().settings, doc.settings);
     d.nodes = Object.assign({}, doc.nodes);
     d.objects = (doc.objects || []).filter((o) => TYPES[o.type]).map((o) => Object.assign({ visible: true, locked: false }, DEFAULTS[o.type], o));
+    // Cartões criados antes de guardar o tipo de cada rua
+    if (App.vectormap) d.objects.forEach((o) => { if (o.type === 'road' && o.role === 'street' && !o.roadClass) o.roadClass = App.vectormap.roadClassOf(o); });
     d.version = 6;
     return d;
   }

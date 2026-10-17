@@ -139,7 +139,11 @@
 
     const doc = M.newDoc(opts.name || '');
     doc.frame = frame;
-    doc.geo = { source: 'openfreemap', center: VM.toLatLng(c0.x, c0.y), angle: (angle * 180) / Math.PI, metersPerUnit: mpu / k };
+    // toG: matriz afim do desenho para coordenadas globais (usada no Mapa geral)
+    doc.geo = {
+      source: 'openfreemap', center: VM.toLatLng(c0.x, c0.y), angle: (angle * 180) / Math.PI, metersPerUnit: mpu / k,
+      toG: [cs / k, -sn / k, sn / k, cs / k, cs * E.x + sn * E.y + c0.x, -sn * E.x + cs * E.y + c0.y]
+    };
 
     const nodeIds = new Map();
     const nid = (i) => {

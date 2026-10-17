@@ -1,22 +1,23 @@
 /* Mantém o editor disponível offline depois da primeira visita. */
-const CACHE = 'mapas-territorio-v6.2';
+const CACHE = 'mapas-territorio-v6.3';
 const SHELL = [
   './',
   'index.html',
-  'styles.css?v=6.2',
+  'styles.css?v=6.3',
   'manifest.webmanifest',
   'icon.svg',
-  'js/util.js?v=6.2',
-  'js/model.js?v=6.2',
-  'js/render.js?v=6.2',
-  'js/storage.js?v=6.2',
-  'js/ui.js?v=6.2',
-  'js/osm.js?v=6.2',
-  'js/mvt.js?v=6.2',
-  'js/vectormap.js?v=6.2',
-  'js/territory.js?v=6.2',
-  'js/editor.js?v=6.2',
-  'js/app.js?v=6.2'
+  'js/util.js?v=6.3',
+  'js/model.js?v=6.3',
+  'js/render.js?v=6.3',
+  'js/storage.js?v=6.3',
+  'js/ui.js?v=6.3',
+  'js/osm.js?v=6.3',
+  'js/mvt.js?v=6.3',
+  'js/vectormap.js?v=6.3',
+  'js/territory.js?v=6.3',
+  'js/overview.js?v=6.3',
+  'js/editor.js?v=6.3',
+  'js/app.js?v=6.3'
 ];
 
 self.addEventListener('install', (e) => {

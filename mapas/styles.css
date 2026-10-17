@@ -597,6 +597,47 @@ dialog::backdrop { background: rgba(10, 15, 25, .5); backdrop-filter: blur(2px);
 .color-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); cursor: pointer; }
 .color-cell input { width: 100%; height: 32px; padding: 2px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); cursor: pointer; }
 
+/* Mapa geral */
+.ov-dialog { width: min(1280px, calc(100vw - 24px)); }
+.ov { display: grid; grid-template-columns: 1fr 300px; gap: 14px; height: min(70dvh, 760px); }
+.ov-map-wrap { position: relative; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: var(--surface-3); min-height: 0; }
+.ov-map { position: absolute; inset: 0; }
+.ov-map .leaflet-tile-pane { filter: grayscale(.7) brightness(1.04); }
+.ov-side { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+.ov-summary { font-size: 13.5px; color: var(--muted); }
+.ov-summary strong { color: var(--text); font-size: 15px; }
+.ov-side .callout .link { display: block; text-align: left; margin-top: 4px; }
+.ov-list { display: flex; flex-direction: column; gap: 4px; }
+.ov-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; border: 1px solid transparent; border-radius: 10px; background: var(--surface-2); color: var(--text); font: inherit; text-align: left; cursor: pointer; }
+.ov-item:hover { border-color: var(--border-strong); }
+.ov-item.active { border-color: var(--accent); background: var(--accent-soft); }
+.ov-item .grow { flex: 1; min-width: 0; }
+.ov-item strong { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ov-item small { color: var(--muted); font-size: 11.5px; }
+.ov-swatch { flex: none; width: 14px; height: 14px; border-radius: 4px; }
+.ov-swatch.empty { border: 1.5px dashed var(--border-strong); }
+.ov-missing summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); padding: 4px 0; }
+.ov-missing .ov-item { margin-top: 4px; }
+.ov-label span {
+  position: absolute; transform: translate(-50%, -50%); white-space: nowrap;
+  background: rgba(255,255,255,.95); color: #16203a; border: 2px solid; border-radius: 8px;
+  padding: 2px 8px; font: 700 12.5px/1.3 var(--font); box-shadow: 0 1px 4px rgba(0,0,0,.2); cursor: pointer;
+}
+.ov-num span { position: absolute; transform: translate(-50%, -50%); font: 700 12px/1 var(--font); color: #16203a; text-shadow: 0 0 3px #fff, 0 0 3px #fff, 0 0 3px #fff; pointer-events: none; }
+.ov-card {
+  position: absolute; left: 10px; bottom: 26px; z-index: 800; width: min(300px, calc(100% - 20px));
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+}
+.ov-thumb { aspect-ratio: 14 / 5.8; background: var(--surface-3) center / cover no-repeat; border-bottom: 1px solid var(--border); }
+.ov-card-body { padding: 10px 12px 12px; }
+.ov-card-body strong { display: block; font-size: 15px; padding-right: 26px; }
+.ov-card-body small { color: var(--muted); font-size: 12px; }
+.ov-card-actions { display: flex; gap: 6px; margin-top: 10px; }
+.ov-card-actions .btn { flex: 1; }
+.ov-card-x { position: absolute; top: 6px; right: 6px; background: var(--surface); }
+.ov-empty { position: absolute; inset: 0; z-index: 700; display: grid; place-items: center; background: color-mix(in srgb, var(--surface) 75%, transparent); }
+.ov-progress { flex: 1; align-self: center; margin: 0 8px 0 0; }
+
 /* Criar pelo mapa */
 .start-hero {
   display: flex;
@@ -734,6 +775,8 @@ dialog::backdrop { background: rgba(10, 15, 25, .5); backdrop-filter: blur(2px);
   .start-hero em { display: none; }
   .start-hero > [data-icon] { width: 44px; height: 44px; }
   .tz-map { height: 50dvh; }
+  .ov { grid-template-columns: 1fr; grid-template-rows: 52dvh auto; height: auto; }
+  .ov-side { overflow: visible; }
   .tz-status { right: 10px; font-size: 12px; }
   .tz-options { gap: 8px 10px; }
   .tz-field { flex: 1 1 140px; }

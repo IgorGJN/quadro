@@ -106,7 +106,7 @@
     let dataUrl;
     try { dataUrl = canvas.toDataURL('image/jpeg', 0.9); }
     catch (e) { throw new Error('O servidor de mapas não permitiu a captura. Tente novamente.'); }
-    return { dataUrl, width: W, height: H, frame, attribution: src.attribution };
+    return { dataUrl, width: W, height: H, frame, attribution: src.attribution, geo: { z, ox: p1.x, oy: p1.y, ts } };
   }
 
   // Busca de endereço (Nominatim) e "minha localização", usadas pelas duas janelas de mapa.
@@ -215,7 +215,7 @@
         const c = map.getCenter();
         App.storage.setPrefs({ osmView: { lat: c.lat, lng: c.lng, z: map.getZoom() } });
         m.close();
-        await App.actions.setBaseImage(out.dataUrl, { attribution: out.attribution, frame: out.frame, width: out.width, height: out.height });
+        await App.actions.setBaseImage(out.dataUrl, { attribution: out.attribution, frame: out.frame, width: out.width, height: out.height, geo: out.geo });
       } catch (err) {
         App.ui.toast(err.message, { type: 'error' });
         use.disabled = false;
@@ -224,5 +224,5 @@
     });
   }
 
-  App.osm = { open, loadLeaflet, searchHtml, bindSearch, SOURCES };
+  App.osm = { open, loadLeaflet, searchHtml, bindSearch, SOURCES, tileUrl, loadTile };
 })();

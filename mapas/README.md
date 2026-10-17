@@ -50,6 +50,17 @@ Tudo vira itens normais do editor: dá para renomear, apagar, mover, mudar cores
 
 Outros atalhos: Ctrl+Z / Ctrl+Shift+Z (desfazer/refazer), Delete (excluir item ou ponto), Ctrl+D (duplicar), setas (mover; Shift = 10×), Ctrl+S (salvar versão), 0 (ver o cartão inteiro), ? (lista de atalhos).
 
+## Mapa geral
+
+Em **Meus mapas › Mapa geral** (ou na aba **Mapa**) aparecem todos os territórios num mapa só, cada um com sua cor e seu nome, para ver o panorama da região:
+
+- toque num território (no mapa ou na lista) para ver a miniatura e abrir o cartão;
+- aproximando bem, aparecem os números das quadras;
+- quadras que estão em mais de um cartão são avisadas, com atalho para ver onde;
+- **Baixar imagem** e **Imprimir** geram o mapa grande com todos os territórios.
+
+Entram no Mapa geral os cartões feitos com **Criar pelo mapa** e os que usam **Imagem do mapa** (capturada a partir desta versão). Mapas feitos com print ou em branco aparecem em "Sem localização". O Mapa geral mostra os mapas salvos neste navegador; para juntar os de outra pessoa, importe os backups `.json` dela.
+
 ## Ajustes em grupo
 
 Na aba **Mapa**:
@@ -93,6 +104,7 @@ mapas/
     mvt.js      leitor de tiles vetoriais (Mapbox Vector Tile), sem dependências
     vectormap.js  ruas, nomes, quadras (faces da malha de ruas), referências e fundo
     territory.js  janela "Criar pelo mapa" e montagem do cartão
+    overview.js   Mapa geral com todos os territórios
     editor.js   ferramentas, gestos (mouse, toque, caneta) e teclado
     app.js      inicialização, salvamento automático e exportação
 ```

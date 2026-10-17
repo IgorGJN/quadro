@@ -83,6 +83,8 @@
       .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
   }
 
+  // Todos os mapas completos (para o Mapa geral).
+  const listDocs = () => tx('projects', 'readonly', (s) => s.all()).then((all) => all.map((p) => ({ id: p.id, doc: p.doc, thumb: p.thumb || null })));
   const getProject = (id) => tx('projects', 'readonly', (s) => s.get(id)).then((r) => (r ? r.doc : null));
   const putProject = (doc, thumb) => tx('projects', 'readwrite', (s) => s.put({ id: doc.id, doc: U.clone(stripTransient(doc)), thumb: thumb || null }));
 
@@ -199,7 +201,7 @@
   }
 
   App.storage = {
-    openDb, listProjects, getProject, putProject, deleteProject, putImage, getImage, collectImages,
+    openDb, listProjects, listDocs, getProject, putProject, deleteProject, putImage, getImage, collectImages,
     addVersion, listVersions, getVersion, getPrefs, setPrefs, importLegacyLocalStorage, exportJson, parseProjectFile,
     isPersistent: () => !memory
   };

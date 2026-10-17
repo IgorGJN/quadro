@@ -135,6 +135,12 @@
     const k = norm.img.naturalWidth / (o.width || norm.img.naturalWidth);
     S.checkpoint();
     d.base = Object.assign({}, d.base, { imageId: id, width: norm.img.naturalWidth, height: norm.img.naturalHeight, visible: true, attribution: o.attribution || '' });
+    if (o.geo) {
+      // Captura do OpenStreetMap: guarda onde a imagem fica no mundo (Mapa geral)
+      const s = App.vectormap.WORLD / (256 * Math.pow(2, o.geo.z));
+      const a = s / (k * o.geo.ts);
+      d.geo = { source: 'osm-image', toG: [a, 0, 0, a, o.geo.ox * s, o.geo.oy * s] };
+    }
     if (o.frame) {
       const r = M.frameRatio(d);
       const f = { x: o.frame.x * k, y: o.frame.y * k, w: o.frame.w * k, h: o.frame.h * k };
@@ -391,6 +397,7 @@
       if (a === 'replaceImage') { $('imageFile').click(); return; }
       if (a === 'osm') { App.osm.open(); return; }
       if (a === 'territory') { App.territory.open(); return; }
+      if (a === 'overview') { App.overview.open(); return; }
       if (a === 'removeBase') {
         const ok = await UI.confirm({ title: 'Remover o mapa base?', message: 'Os itens desenhados continuam. Você pode desfazer.', ok: 'Remover', danger: true });
         if (!ok) return;

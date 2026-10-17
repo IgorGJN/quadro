@@ -495,7 +495,7 @@
       '<label class="toggle" style="margin-top:8px"><span>Escurecer fora do cartão</span><input type="checkbox" data-doc="settings.dimOutside"' + (d.settings.dimOutside ? ' checked' : '') + ' /><span class="track"></span></label></div>';
 
     html += '<div class="section"><h3>Mapa base</h3>';
-    if (d.geo) html += '<p class="note">Cartão criado pelo mapa' + (d.geo.angle ? ' (girado ' + Math.round(d.geo.angle) + '°; a seta do Norte mostra a direção)' : '') + '. Ruas, quadras e referências são itens normais: edite à vontade.</p>';
+    if (d.geo && d.geo.source === 'openfreemap') html += '<p class="note">Cartão criado pelo mapa' + (d.geo.angle ? ' (girado ' + Math.round(d.geo.angle) + '°; a seta do Norte mostra a direção)' : '') + '. Ruas, quadras e referências são itens normais: edite à vontade.</p>';
     if (b.imageId) {
       html += '<label class="toggle"><span>Mostrar mapa base</span><input type="checkbox" data-doc="base.visible"' + (b.visible ? ' checked' : '') + ' /><span class="track"></span></label>' +
         '<div class="field"><label for="baseOpacity">Intensidade <output>' + Math.round(b.opacity * 100) + '%</output></label><input type="range" id="baseOpacity" data-doc="base.opacity" min="0.1" max="1" step="0.05" value="' + b.opacity + '" /></div>' +
@@ -510,7 +510,8 @@
 
     html += groupSections(d);
 
-    html += '<div class="section"><h3>Novo cartão</h3><p class="note">Marque as quadras no mapa e o cartão é montado sozinho, num mapa novo.</p><button class="btn block" data-set="territory">' + icon('wand') + 'Criar pelo mapa</button></div>';
+    html += '<div class="section"><h3>Novo cartão</h3><p class="note">Marque as quadras no mapa e o cartão é montado sozinho, num mapa novo.</p><button class="btn block" data-set="territory">' + icon('wand') + 'Criar pelo mapa</button>' +
+      '<button class="btn block" style="margin-top:8px" data-set="overview">' + icon('globe') + 'Ver o mapa geral dos territórios</button></div>';
 
     html += '<div class="section"><h3>Desenho</h3>' +
       '<label class="toggle"><span>Encaixar em pontos e ruas próximas<small>Segure Alt para desativar na hora</small></span><input type="checkbox" data-doc="settings.snap"' + (d.settings.snap ? ' checked' : '') + ' /><span class="track"></span></label>' +
@@ -613,7 +614,9 @@
     add.onclick = () => { m.close(); A().newProject(); };
     const imp = h('<button class="btn">' + icon('upload') + 'Abrir backup .json</button>');
     imp.onclick = () => { m.close(); A().pickJson(); };
-    bar.append(add, imp);
+    const ov = h('<button class="btn">' + icon('globe') + 'Mapa geral</button>');
+    ov.onclick = () => { m.close(); App.overview.open(); };
+    bar.append(add, ov, imp);
 
     const grid = body.querySelector('.gallery');
     const draw = async () => {
